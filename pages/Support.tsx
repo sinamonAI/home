@@ -21,41 +21,41 @@ const Support: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="pt-32 pb-24 px-4 bg-black min-h-screen">
+    <div className="pt-20 pb-2 px-4 bg-black min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-12 text-center">Help Center</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Help Center</h1>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-16">
-          <div className="p-8 bg-[#050A14] border border-gray-800 rounded-3xl">
-             <Mail className="text-[#00D1FF] mb-4" size={32} />
-             <h3 className="text-xl font-bold mb-2">Email Support</h3>
-             <p className="text-gray-400 mb-6">sinamon.inc@gmail.com</p>
-             <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">Contact Us</button>
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <div className="p-5 bg-[#050A14] border border-white/15 rounded-2xl">
+            <Mail className="text-[#00D1FF] mb-2" size={24} />
+            <h3 className="text-base font-bold mb-1">Email Support</h3>
+            <p className="text-gray-400 text-sm mb-3">sinamon.inc@gmail.com</p>
+            <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-sm">Contact Us</button>
           </div>
-          <div className="p-8 bg-[#050A14] border border-gray-800 rounded-3xl">
-             <MessageSquare className="text-[#00FF41] mb-4" size={32} />
-             <h3 className="text-xl font-bold mb-2">Community</h3>
-             <p className="text-gray-400 mb-6">Join our Discord</p>
-             <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">Join Channel</button>
+          <div className="p-5 bg-[#050A14] border border-white/15 rounded-2xl">
+            <MessageSquare className="text-[#00FF41] mb-2" size={24} />
+            <h3 className="text-base font-bold mb-1">Community</h3>
+            <p className="text-gray-400 text-sm mb-3">Join our Discord</p>
+            <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-sm">Join Channel</button>
           </div>
         </div>
 
-        <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-8 flex items-center gap-2">
-            <span className="w-2 h-8 bg-[#00FF41] rounded-full" /> 자주 묻는 질문
+        <section>
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <span className="w-2 h-6 bg-[#00FF41] rounded-full" /> 자주 묻는 질문
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {FAQ_DATA.map((faq, idx) => (
-              <div key={idx} className="border border-gray-800 rounded-2xl bg-[#050A14]/50 overflow-hidden">
-                <button 
+              <div key={idx} className="border border-white/15 rounded-xl bg-[#050A14]/50 overflow-hidden">
+                <button
                   onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
-                  className="w-full p-6 text-left flex justify-between items-center"
+                  className="w-full p-4 text-left flex justify-between items-center text-sm"
                 >
                   <span className="font-semibold">{faq.question}</span>
-                  {openIndex === idx ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  {openIndex === idx ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
                 {openIndex === idx && (
-                  <div className="px-6 pb-6 text-gray-400 leading-relaxed border-t border-gray-800 pt-4">
+                  <div className="px-4 pb-4 text-gray-400 text-sm leading-relaxed border-t border-white/10 pt-3">
                     {faq.answer}
                   </div>
                 )}

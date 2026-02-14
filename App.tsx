@@ -73,7 +73,7 @@ const App: React.FC = () => {
           </Routes>
         </main>
 
-        <footer className="py-16 border-t border-white/15 bg-black px-6">
+        <footer className="py-6 border-t border-white/15 bg-black px-6">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col items-center md:items-start gap-3">
               <div className="text-xl font-black mono text-white">QUANTDRIVE</div>

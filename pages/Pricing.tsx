@@ -64,16 +64,16 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   };
 
   return (
-    <div className="pt-32 pb-24 px-6 bg-black min-h-screen relative overflow-hidden">
-      <div className="max-w-7xl mx-auto text-center mb-16 relative z-10">
+    <div className="pt-20 pb-4 px-6 bg-black min-h-screen relative overflow-hidden">
+      <div className="max-w-7xl mx-auto text-center mb-6 relative z-10">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl md:text-8xl font-black mb-4 tracking-tighter uppercase italic"
+          className="text-4xl md:text-6xl font-black mb-2 tracking-tighter uppercase italic"
         >
           SELECT YOUR <br /><span className="text-[#00FF41]">TIER.</span>
         </motion.h1>
-        <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">
+        <p className="text-base text-gray-500 font-medium max-w-2xl mx-auto">
           서버 유지비 $0. 오직 당신의 전략에만 집중하세요.
         </p>
         {isLoggedIn && !currentTier && (
@@ -87,7 +87,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 relative z-10">
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-6 relative z-10">
         {plans.map((plan) => {
           const isCurrentTier = currentTier === plan.id;
           const isSelected = selected === plan.id;
@@ -100,37 +100,37 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               onClick={() => setSelected(plan.id)}
-              className={`p-10 md:p-12 rounded-[3rem] flex flex-col relative overflow-hidden transition-all duration-500 cursor-pointer ${isSelected
-                  ? 'bg-gradient-to-br from-[#050A14] to-black shadow-[0_0_50px_rgba(0,255,65,0.15)]'
-                  : 'bg-white/5 hover:bg-white/[0.07]'
+              className={`p-6 md:p-8 rounded-[2rem] flex flex-col relative overflow-hidden transition-all duration-500 cursor-pointer ${isSelected
+                ? 'bg-gradient-to-br from-[#050A14] to-black shadow-[0_0_50px_rgba(0,255,65,0.15)]'
+                : 'bg-white/5 hover:bg-white/[0.07]'
                 }`}
               style={{
                 border: isSelected ? `2px solid ${accentColor}` : '1px solid rgba(255,255,255,0.15)',
               }}
             >
               {isCurrentTier && (
-                <div className="absolute top-8 right-8 px-4 py-1 bg-white/10 text-white text-[10px] font-black rounded-full uppercase tracking-widest border border-white/20">
+                <div className="absolute top-6 right-6 px-3 py-1 bg-white/10 text-white text-[10px] font-black rounded-full uppercase tracking-widest border border-white/20">
                   Current Plan
                 </div>
               )}
               {isSelected && !isCurrentTier && (
                 <div
-                  className="absolute top-8 right-8 px-4 py-1 text-black text-[10px] font-black rounded-full uppercase tracking-widest"
+                  className="absolute top-6 right-6 px-3 py-1 text-black text-[10px] font-black rounded-full uppercase tracking-widest"
                   style={{ backgroundColor: accentColor }}
                 >
                   Selected
                 </div>
               )}
               <h2 className="text-3xl font-black mb-2 uppercase italic tracking-tight">{plan.title}</h2>
-              <div className="text-5xl font-black mb-4 tracking-tighter" style={{ color: isSelected ? accentColor : 'white' }}>
+              <div className="text-4xl font-black mb-2 tracking-tighter" style={{ color: isSelected ? accentColor : 'white' }}>
                 {plan.price}
                 {plan.price !== 'Free' && <span className="text-lg text-gray-500 font-normal ml-2">/ month</span>}
               </div>
-              <p className="text-gray-400 mb-8 text-sm font-medium">{plan.desc}</p>
+              <p className="text-gray-400 mb-4 text-sm font-medium">{plan.desc}</p>
 
-              <ul className="space-y-4 mb-10 flex-1">
+              <ul className="space-y-2 mb-6 flex-1">
                 {plan.features.map((f: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 text-sm text-gray-300 font-medium">
+                  <li key={i} className="flex items-start gap-2 text-xs text-gray-300 font-medium">
                     <Check size={18} style={{ color: accentColor }} className="flex-shrink-0" /> {f}
                   </li>
                 ))}
@@ -140,8 +140,8 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
                 onClick={(e) => { e.stopPropagation(); handleSelect(plan.id); }}
                 disabled={saving}
                 className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-3 ${isSelected
-                    ? 'text-black hover:scale-105'
-                    : 'bg-white/5 text-white border border-white/20 hover:bg-white/10'
+                  ? 'text-black hover:scale-105'
+                  : 'bg-white/5 text-white border border-white/20 hover:bg-white/10'
                   }`}
                 style={isSelected ? {
                   backgroundColor: accentColor,
