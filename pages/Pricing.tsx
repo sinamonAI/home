@@ -64,7 +64,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   };
 
   return (
-    <div className="pt-20 pb-4 px-6 bg-black relative overflow-hidden flex-1">
+    <div className="pt-20 pb-4 px-6 bg-black relative overflow-hidden flex-1 flex flex-col">
       <div className="max-w-7xl mx-auto text-center mb-6 relative z-10">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
@@ -87,7 +87,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-6 relative z-10">
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-6 relative z-10 flex-1">
         {plans.map((plan) => {
           const isCurrentTier = currentTier === plan.id;
           const isSelected = selected === plan.id;

@@ -21,22 +21,22 @@ const Support: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="pt-20 pb-2 px-4 bg-black flex-1">
-      <div className="max-w-4xl mx-auto">
+    <div className="pt-20 pb-2 px-4 bg-black flex-1 flex flex-col">
+      <div className="max-w-4xl mx-auto flex-1 flex flex-col w-full">
         <h1 className="text-3xl font-bold mb-6 text-center">Help Center</h1>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <div className="p-5 bg-[#050A14] border border-white/15 rounded-2xl">
-            <Mail className="text-[#00D1FF] mb-2" size={24} />
-            <h3 className="text-base font-bold mb-1">Email Support</h3>
-            <p className="text-gray-400 text-sm mb-3">sinamon.inc@gmail.com</p>
-            <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-sm">Contact Us</button>
+        <div className="grid md:grid-cols-2 gap-4 mb-6 flex-1">
+          <div className="p-8 bg-[#050A14] border border-white/15 rounded-2xl flex flex-col justify-center">
+            <Mail className="text-[#00D1FF] mb-4" size={36} />
+            <h3 className="text-xl font-bold mb-2">Email Support</h3>
+            <p className="text-gray-400 mb-6">sinamon.inc@gmail.com</p>
+            <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">Contact Us</button>
           </div>
-          <div className="p-5 bg-[#050A14] border border-white/15 rounded-2xl">
-            <MessageSquare className="text-[#00FF41] mb-2" size={24} />
-            <h3 className="text-base font-bold mb-1">Community</h3>
-            <p className="text-gray-400 text-sm mb-3">Join our Discord</p>
-            <button className="w-full py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-sm">Join Channel</button>
+          <div className="p-8 bg-[#050A14] border border-white/15 rounded-2xl flex flex-col justify-center">
+            <MessageSquare className="text-[#00FF41] mb-4" size={36} />
+            <h3 className="text-xl font-bold mb-2">Community</h3>
+            <p className="text-gray-400 mb-6">Join our Discord</p>
+            <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">Join Channel</button>
           </div>
         </div>
 
