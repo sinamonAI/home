@@ -4,15 +4,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase.config';
 import { BRAND_LOGO, BRAND_NAME } from '../constants';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, Zap } from 'lucide-react';
+import { UserTier } from '../services/userService';
 
 interface NavbarProps {
   isLoggedIn?: boolean;
   userName?: string;
   userPhoto?: string;
+  tier?: UserTier;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto }) => {
+const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto, tier }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -45,6 +47,12 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto }) => {
                 <img src={userPhoto} alt="" className="w-8 h-8 rounded-full border border-[#00FF41]/30" />
               )}
               <span className="text-xs text-gray-400 font-medium max-w-[100px] truncate">{userName}</span>
+              {tier && (
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${tier === 'pro' ? 'bg-[#00FF41]/10 text-[#00FF41] border border-[#00FF41]/30' : 'bg-white/5 text-gray-500 border border-white/10'
+                  }`}>
+                  {tier === 'pro' ? 'PRO' : 'FREE'}
+                </span>
+              )}
               <button
                 onClick={handleSignOut}
                 className="p-2 text-gray-500 hover:text-red-400 transition-colors"

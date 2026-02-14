@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './services/firebase.config';
+import { getUserTier, UserTier } from './services/userService';
 import Navbar from './components/Navbar';
 import MatrixBackground from './components/MatrixBackground';
 import Home from './pages/Home';
@@ -13,15 +14,26 @@ import Support from './pages/Support';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [tier, setTier] = useState<UserTier>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+      if (firebaseUser) {
+        const t = await getUserTier(firebaseUser.uid);
+        setTier(t);
+      } else {
+        setTier(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleTierChange = (newTier: 'starter' | 'pro') => {
+    setTier(newTier);
+  };
 
   if (loading) {
     return (
@@ -34,19 +46,28 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen selection:bg-[#00FF41] selection:text-black">
-        <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} />
+        <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
         <MatrixBackground />
 
         <main className="relative">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={
-              user ? <Navigate to="/dashboard" replace /> : <Login />
+              user ? <Navigate to={tier ? "/dashboard" : "/pricing"} replace /> : <Login />
             } />
             <Route path="/dashboard" element={
-              user ? <Dashboard /> : <Navigate to="/login" replace />
+              !user ? <Navigate to="/login" replace /> :
+                !tier ? <Navigate to="/pricing" replace /> :
+                  <Dashboard tier={tier} />
             } />
-            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/pricing" element={
+              <Pricing
+                isLoggedIn={!!user}
+                currentTier={tier}
+                uid={user?.uid}
+                onTierChange={handleTierChange}
+              />
+            } />
             <Route path="/support" element={<Support />} />
           </Routes>
         </main>

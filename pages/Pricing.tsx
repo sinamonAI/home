@@ -1,11 +1,20 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Zap, Cpu } from 'lucide-react';
+import { Check, Zap, Cpu, ArrowRight } from 'lucide-react';
+import { setUserTier, UserTier } from '../services/userService';
+
+interface PricingProps {
+  isLoggedIn?: boolean;
+  currentTier?: UserTier;
+  uid?: string;
+  onTierChange?: (tier: 'starter' | 'pro') => void;
+}
 
 const plans = [
   {
-    id: 'starter',
+    id: 'starter' as const,
     title: 'Starter',
     price: 'Free',
     desc: '개인 투자자를 위한 자동매매 기초 패키지',
@@ -19,7 +28,7 @@ const plans = [
     color: '#00D1FF',
   },
   {
-    id: 'pro',
+    id: 'pro' as const,
     title: 'Quant Pro',
     price: '$29',
     desc: '전문가급 시스템 트레이딩을 위한 프리미엄 솔루션',
@@ -35,8 +44,24 @@ const plans = [
   }
 ];
 
-const Pricing: React.FC = () => {
-  const [selected, setSelected] = useState('pro');
+const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierChange }) => {
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState<'starter' | 'pro'>(currentTier === 'starter' ? 'starter' : 'pro');
+  const [saving, setSaving] = useState(false);
+
+  const handleSelect = async (planId: 'starter' | 'pro') => {
+    setSelected(planId);
+
+    if (isLoggedIn && uid) {
+      setSaving(true);
+      await setUserTier(uid, planId);
+      onTierChange?.(planId);
+      setSaving(false);
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
 
   return (
     <div className="pt-32 pb-24 px-6 bg-black min-h-screen relative overflow-hidden">
@@ -51,10 +76,20 @@ const Pricing: React.FC = () => {
         <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">
           서버 유지비 $0. 오직 당신의 전략에만 집중하세요.
         </p>
+        {isLoggedIn && !currentTier && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-4 text-[#00FF41] text-sm font-bold"
+          >
+            ✦ 플랜을 선택하면 콘솔에 바로 접속할 수 있습니다
+          </motion.p>
+        )}
       </div>
 
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 relative z-10">
         {plans.map((plan) => {
+          const isCurrentTier = currentTier === plan.id;
           const isSelected = selected === plan.id;
           const accentColor = plan.color;
 
@@ -73,7 +108,12 @@ const Pricing: React.FC = () => {
                 border: isSelected ? `2px solid ${accentColor}` : '1px solid rgba(255,255,255,0.15)',
               }}
             >
-              {isSelected && (
+              {isCurrentTier && (
+                <div className="absolute top-8 right-8 px-4 py-1 bg-white/10 text-white text-[10px] font-black rounded-full uppercase tracking-widest border border-white/20">
+                  Current Plan
+                </div>
+              )}
+              {isSelected && !isCurrentTier && (
                 <div
                   className="absolute top-8 right-8 px-4 py-1 text-black text-[10px] font-black rounded-full uppercase tracking-widest"
                   style={{ backgroundColor: accentColor }}
@@ -97,7 +137,9 @@ const Pricing: React.FC = () => {
               </ul>
 
               <button
-                className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] transition-all duration-500 ${isSelected
+                onClick={(e) => { e.stopPropagation(); handleSelect(plan.id); }}
+                disabled={saving}
+                className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-3 ${isSelected
                     ? 'text-black hover:scale-105'
                     : 'bg-white/5 text-white border border-white/20 hover:bg-white/10'
                   }`}
@@ -106,7 +148,14 @@ const Pricing: React.FC = () => {
                   boxShadow: `0 0 30px ${accentColor}40`
                 } : {}}
               >
-                {plan.buttonText}
+                {saving ? (
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {isCurrentTier ? 'Current Plan' : plan.buttonText}
+                    {!isCurrentTier && <ArrowRight size={16} />}
+                  </>
+                )}
               </button>
             </motion.div>
           );

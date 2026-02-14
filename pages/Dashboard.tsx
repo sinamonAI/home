@@ -1,9 +1,15 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Code, Link as LinkIcon, BookOpen, Copy, Check, Zap, Terminal, Shield, TrendingUp, Cpu, Play, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Code, Link as LinkIcon, BookOpen, Copy, Check, Zap, Terminal, Shield, TrendingUp, Cpu, Play, AlertTriangle, Lock, ArrowUpRight } from 'lucide-react';
 import { SCRIPT_ID, BRAND_NAME } from '../constants';
 import { generateTradingCode } from '../services/geminiService';
+import { UserTier } from '../services/userService';
+
+interface DashboardProps {
+  tier: UserTier;
+}
 
 // 검증된 전략 템플릿
 const STRATEGY_TEMPLATES = [
@@ -57,7 +63,8 @@ const STRATEGY_TEMPLATES = [
   }
 ];
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC<DashboardProps> = ({ tier }) => {
+  const isPro = tier === 'pro';
   const [prompt, setPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -113,12 +120,19 @@ const Dashboard: React.FC = () => {
         </nav>
 
         <div className="pt-6 border-t border-white/15">
-          <div className="p-5 bg-white/5 rounded-2xl border border-white/15">
+          <div className={`p-5 rounded-2xl border ${isPro ? 'bg-[#00FF41]/5 border-[#00FF41]/20' : 'bg-white/5 border-white/15'}`}>
             <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Account</h4>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase italic">Quant Pro</span>
-              <Zap size={14} className="text-[#00FF41]" />
+              <span className={`text-xs font-bold uppercase italic ${isPro ? 'text-[#00FF41]' : 'text-[#00D1FF]'}`}>
+                {isPro ? 'Quant Pro' : 'Starter'}
+              </span>
+              {isPro ? <Zap size={14} className="text-[#00FF41]" /> : <span className="text-[9px] text-gray-600">FREE</span>}
             </div>
+            {!isPro && (
+              <Link to="/pricing" className="mt-3 flex items-center gap-1 text-[9px] text-[#00FF41] font-bold uppercase tracking-widest hover:underline">
+                Upgrade to Pro <ArrowUpRight size={10} />
+              </Link>
+            )}
           </div>
         </div>
       </aside>
@@ -145,8 +159,8 @@ const Dashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('ai')}
             className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${activeTab === 'ai'
-                ? 'bg-[#00FF41]/10 text-[#00FF41] border-[#00FF41]/30'
-                : 'text-gray-500 border-white/10 hover:bg-white/5'
+              ? 'bg-[#00FF41]/10 text-[#00FF41] border-[#00FF41]/30'
+              : 'text-gray-500 border-white/10 hover:bg-white/5'
               }`}
           >
             <span className="flex items-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
@@ -154,8 +168,8 @@ const Dashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('templates')}
             className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${activeTab === 'templates'
-                ? 'bg-[#00D1FF]/10 text-[#00D1FF] border-[#00D1FF]/30'
-                : 'text-gray-500 border-white/10 hover:bg-white/5'
+              ? 'bg-[#00D1FF]/10 text-[#00D1FF] border-[#00D1FF]/30'
+              : 'text-gray-500 border-white/10 hover:bg-white/5'
               }`}
           >
             <span className="flex items-center gap-2"><TrendingUp size={14} /> 검증된 전략</span>
