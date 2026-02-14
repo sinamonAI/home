@@ -15,7 +15,7 @@ const Login: React.FC = () => {
     setError('');
     try {
       await signInWithPopup(auth, googleProvider);
-      navigate('/dashboard');
+      // App.tsx의 onAuthStateChanged가 tier 로딩 후 자동 라우팅
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
