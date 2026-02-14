@@ -46,11 +46,11 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="min-h-screen selection:bg-[#00FF41] selection:text-black">
+      <div className="h-screen flex flex-col selection:bg-[#00FF41] selection:text-black overflow-hidden">
         <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
         <MatrixBackground />
 
-        <main className="relative">
+        <main className="relative flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={

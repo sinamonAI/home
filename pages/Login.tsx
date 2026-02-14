@@ -31,7 +31,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4">
+    <div className="flex-1 flex items-center justify-center bg-black px-4">
       <div className="max-w-md w-full p-8 rounded-3xl bg-[#050A14] border border-white/15 text-center">
         <div className="flex justify-center mb-8">
           {BRAND_LOGO}

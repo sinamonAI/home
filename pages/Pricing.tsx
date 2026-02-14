@@ -64,7 +64,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   };
 
   return (
-    <div className="pt-20 pb-4 px-6 bg-black min-h-screen relative overflow-hidden">
+    <div className="pt-20 pb-4 px-6 bg-black relative overflow-hidden flex-1">
       <div className="max-w-7xl mx-auto text-center mb-6 relative z-10">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}

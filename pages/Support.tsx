@@ -21,7 +21,7 @@ const Support: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="pt-20 pb-2 px-4 bg-black min-h-screen">
+    <div className="pt-20 pb-2 px-4 bg-black flex-1">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-center">Help Center</h1>
 
