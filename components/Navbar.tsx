@@ -1,16 +1,25 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../services/firebase.config';
 import { BRAND_LOGO, BRAND_NAME } from '../constants';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   isLoggedIn?: boolean;
+  userName?: string;
+  userPhoto?: string;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ isLoggedIn }) => {
-  const location = useLocation();
+const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    navigate('/');
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] transition-all duration-300 bg-black/50 backdrop-blur-xl border-b border-white/10">
@@ -28,14 +37,30 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn }) => {
           <Link to="/dashboard" className="text-[#00FF41] hover:brightness-125 transition-all">Console</Link>
         </div>
 
-        {/* Desktop Enter Button */}
+        {/* Desktop Right Side */}
         <div className="hidden md:flex items-center gap-4">
-          <Link
-            to={isLoggedIn ? "/dashboard" : "/login"}
-            className="px-6 py-2 bg-[#00FF41] text-black rounded-full text-xs font-black glow-green transition-all uppercase tracking-widest"
-          >
-            {isLoggedIn ? 'Console' : 'Enter'}
-          </Link>
+          {isLoggedIn ? (
+            <div className="flex items-center gap-3">
+              {userPhoto && (
+                <img src={userPhoto} alt="" className="w-8 h-8 rounded-full border border-[#00FF41]/30" />
+              )}
+              <span className="text-xs text-gray-400 font-medium max-w-[100px] truncate">{userName}</span>
+              <button
+                onClick={handleSignOut}
+                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="px-6 py-2 bg-[#00FF41] text-black rounded-full text-xs font-black glow-green transition-all uppercase tracking-widest"
+            >
+              Enter
+            </Link>
+          )}
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -58,13 +83,28 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn }) => {
           </div>
 
           <div className="flex justify-center">
-            <Link
-              to={isLoggedIn ? "/dashboard" : "/login"}
-              onClick={() => setIsOpen(false)}
-              className="w-full max-w-xs text-center px-6 py-4 bg-[#00FF41] text-black rounded-xl text-sm font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,255,65,0.3)]"
-            >
-              {isLoggedIn ? 'Open Console' : 'Enter'}
-            </Link>
+            {isLoggedIn ? (
+              <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+                <div className="flex items-center gap-3">
+                  {userPhoto && <img src={userPhoto} alt="" className="w-8 h-8 rounded-full border border-[#00FF41]/30" />}
+                  <span className="text-sm text-gray-300">{userName}</span>
+                </div>
+                <button
+                  onClick={() => { handleSignOut(); setIsOpen(false); }}
+                  className="w-full text-center px-6 py-4 bg-white/5 text-red-400 border border-red-500/20 rounded-xl text-sm font-black uppercase tracking-widest"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setIsOpen(false)}
+                className="w-full max-w-xs text-center px-6 py-4 bg-[#00FF41] text-black rounded-xl text-sm font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,255,65,0.3)]"
+              >
+                Enter
+              </Link>
+            )}
           </div>
         </div>
       )}

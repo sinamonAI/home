@@ -1,6 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from './services/firebase.config';
 import Navbar from './components/Navbar';
 import MatrixBackground from './components/MatrixBackground';
 import Home from './pages/Home';
@@ -10,20 +12,39 @@ import Pricing from './pages/Pricing';
 import Support from './pages/Support';
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#00FF41] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Router>
       <div className="min-h-screen selection:bg-[#00FF41] selection:text-black">
-        <Navbar isLoggedIn={isLoggedIn} />
+        <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} />
         <MatrixBackground />
 
         <main className="relative">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
+            <Route path="/login" element={
+              user ? <Navigate to="/dashboard" replace /> : <Login />
+            } />
             <Route path="/dashboard" element={
-              isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />
+              user ? <Dashboard /> : <Navigate to="/login" replace />
             } />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/support" element={<Support />} />
