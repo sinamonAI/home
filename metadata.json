@@ -1,0 +1,8 @@
+
+{
+  "name": "AlgoCloud - Cybernetic Trading Bot",
+  "description": "Serverless automated trading bot system powered by Google Apps Script and AI-driven strategy generation.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
