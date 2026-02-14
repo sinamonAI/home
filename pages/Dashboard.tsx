@@ -2,13 +2,16 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Code, Link as LinkIcon, BookOpen, Copy, Check, Zap, Terminal, Shield, TrendingUp, Cpu, Play, AlertTriangle, Lock, ArrowUpRight } from 'lucide-react';
+import { LayoutDashboard, Code, Link as LinkIcon, BookOpen, Copy, Check, Zap, Terminal, Shield, TrendingUp, Cpu, Play, AlertTriangle, Lock, ArrowUpRight, Sun, Moon } from 'lucide-react';
 import { SCRIPT_ID, BRAND_NAME } from '../constants';
 import { generateTradingCode } from '../services/geminiService';
-import { UserTier } from '../services/userService';
+import { UserTier, ConsoleTheme, setUserTheme } from '../services/userService';
 
 interface DashboardProps {
   tier: UserTier;
+  theme: ConsoleTheme;
+  uid: string;
+  onThemeChange: (t: ConsoleTheme) => void;
 }
 
 // 검증된 전략 템플릿
@@ -63,8 +66,9 @@ const STRATEGY_TEMPLATES = [
   }
 ];
 
-const Dashboard: React.FC<DashboardProps> = ({ tier }) => {
+const Dashboard: React.FC<DashboardProps> = ({ tier, theme, uid, onThemeChange }) => {
   const isPro = tier === 'pro';
+  const isLight = theme === 'light';
   const [prompt, setPrompt] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -89,16 +93,22 @@ const Dashboard: React.FC<DashboardProps> = ({ tier }) => {
     setGeneratedCode(template.code);
   };
 
+  const toggleTheme = async () => {
+    const next = isLight ? 'dark' : 'light';
+    onThemeChange(next);
+    await setUserTheme(uid, next);
+  };
+
   return (
-    <div className="min-h-screen bg-black flex flex-col md:flex-row pt-20 relative overflow-hidden selection:bg-[#00FF41] selection:text-black">
+    <div className={`min-h-screen flex flex-col md:flex-row pt-20 relative overflow-hidden selection:text-black ${isLight ? 'bg-[#f0f2f5] text-gray-900 selection:bg-blue-400' : 'bg-black selection:bg-[#00FF41]'}`}>
       {/* Sidebar */}
-      <aside className="w-full md:w-72 border-r border-white/15 p-6 space-y-6 flex-shrink-0 bg-black/50 backdrop-blur-3xl z-20">
+      <aside className={`w-full md:w-72 border-r p-6 space-y-6 flex-shrink-0 backdrop-blur-3xl z-20 ${isLight ? 'border-gray-200 bg-white/80' : 'border-white/15 bg-black/50'}`}>
         <div className="px-2">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-2.5 h-2.5 bg-[#00FF41] rounded-full animate-pulse shadow-[0_0_15px_#00FF41]" />
             <h2 className="text-[10px] font-black text-[#00FF41] uppercase tracking-[0.3em] mono">Connection Active</h2>
           </div>
-          <p className="text-[9px] text-gray-600 mono uppercase tracking-widest">Console: QD-ENGINE-X</p>
+          <p className={`text-[9px] mono uppercase tracking-widest ${isLight ? 'text-gray-400' : 'text-gray-600'}`}>Console: QD-ENGINE-X</p>
         </div>
 
         <nav className="space-y-2">
@@ -147,8 +157,15 @@ const Dashboard: React.FC<DashboardProps> = ({ tier }) => {
             </h1>
             <p className="text-gray-500 text-sm mt-1 font-medium">전략을 바이브하고, 코드를 받으세요. 당신의 구글 드라이브에서 실행됩니다.</p>
           </div>
-          <div className="flex gap-3">
-            <div className="px-5 py-2.5 bg-[#050A14] border border-white/15 rounded-2xl text-[10px] mono text-gray-500 uppercase tracking-widest">
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={toggleTheme}
+              className={`p-2.5 rounded-xl border transition-all ${isLight ? 'bg-gray-100 border-gray-200 text-gray-600 hover:bg-gray-200' : 'bg-[#050A14] border-white/15 text-gray-400 hover:text-white'}`}
+              title={isLight ? 'Dark Mode' : 'Light Mode'}
+            >
+              {isLight ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+            <div className={`px-5 py-2.5 border rounded-2xl text-[10px] mono uppercase tracking-widest ${isLight ? 'bg-white border-gray-200 text-gray-500' : 'bg-[#050A14] border-white/15 text-gray-500'}`}>
               Latency: <span className="text-[#00FF41]">0.2ms</span>
             </div>
           </div>

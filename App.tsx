@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './services/firebase.config';
-import { getUserTier, UserTier } from './services/userService';
+import { getUserTier, getUserTheme, UserTier, ConsoleTheme } from './services/userService';
 import Navbar from './components/Navbar';
 import MatrixBackground from './components/MatrixBackground';
 import Home from './pages/Home';
@@ -15,6 +15,7 @@ import Support from './pages/Support';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [tier, setTier] = useState<UserTier>(null);
+  const [consoleTheme, setConsoleTheme] = useState<ConsoleTheme>('dark');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +24,9 @@ const App: React.FC = () => {
       setUser(firebaseUser);
       if (firebaseUser) {
         const t = await getUserTier(firebaseUser.uid);
+        const theme = await getUserTheme(firebaseUser.uid);
         setTier(t);
+        setConsoleTheme(theme);
       } else {
         setTier(null);
       }
@@ -46,11 +49,11 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="h-screen flex flex-col selection:bg-[#00FF41] selection:text-black overflow-hidden">
+      <div className="min-h-screen selection:bg-[#00FF41] selection:text-black">
         <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
         <MatrixBackground />
 
-        <main className="relative flex-1 overflow-y-auto">
+        <main className="relative">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={
@@ -59,7 +62,7 @@ const App: React.FC = () => {
             <Route path="/dashboard" element={
               !user ? <Navigate to="/login" replace /> :
                 !tier ? <Navigate to="/pricing" replace /> :
-                  <Dashboard tier={tier} />
+                  <Dashboard tier={tier} theme={consoleTheme} uid={user.uid} onThemeChange={setConsoleTheme} />
             } />
             <Route path="/pricing" element={
               <Pricing
