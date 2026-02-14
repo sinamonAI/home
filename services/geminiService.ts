@@ -1,8 +1,17 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Always use named parameter and process.env.API_KEY directly for initialization
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safe initialization
+const apiKey = process.env.API_KEY || '';
+let ai: any = null;
+
+if (apiKey) {
+  try {
+    ai = new GoogleGenAI({ apiKey });
+  } catch (e) {
+    console.error("Failed to initialize Gemini AI:", e);
+  }
+}
 
 const SYSTEM_INSTRUCTION = `
 You are an AI coding expert for AlgoCloud, a Google Apps Script (GAS) based trading platform.
@@ -23,6 +32,11 @@ Rules:
 `;
 
 export const generateTradingCode = async (prompt: string) => {
+  if (!ai) {
+    console.warn("Gemini AI not initialized (Missing API Key)");
+    return "// Error: AI Service not configured. Please check API Key.";
+  }
+
   try {
     // Using gemini-3-pro-preview for complex coding tasks as per guidelines
     const response = await ai.models.generateContent({
