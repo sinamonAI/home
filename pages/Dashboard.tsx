@@ -1,14 +1,13 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase.config';
 import { motion } from 'framer-motion';
-import { Terminal, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink } from 'lucide-react';
+import { Terminal, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon } from 'lucide-react';
 import { SCRIPT_ID, BRAND_LOGO, BRAND_NAME } from '../constants';
 import { generateTradingCode } from '../services/geminiService';
-import { UserTier } from '../services/userService';
-import { Link } from 'react-router-dom';
+import { UserTier, deleteUserAccount } from '../services/userService';
 
 interface DashboardProps {
   tier: UserTier;
@@ -81,6 +80,10 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const [activeTab, setActiveTab] = useState<'ai' | 'templates'>('ai');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState<'console' | 'docs' | 'account' | 'support'>('console');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // AI 코드 생성
   const handleGenerate = async () => {
@@ -107,6 +110,25 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const handleSignOut = async () => {
     await signOut(auth);
     navigate('/');
+  };
+
+  // 회원 탈퇴 처리
+  const handleDeleteAccount = async () => {
+    if (deleteInput !== '탈퇴합니다') return;
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    const result = await deleteUserAccount(currentUser);
+
+    if (result.success) {
+      navigate('/');
+    } else {
+      setDeleteError(result.error || '알 수 없는 오류');
+      setIsDeleting(false);
+    }
   };
 
   // 사이드바 메뉴 항목
@@ -398,6 +420,79 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                     </Link>
                   )}
                 </div>
+              </div>
+
+              {/* 회원 탈퇴 — 숨겨진 섹션 */}
+              <div className="mt-8 p-6 rounded-2xl border border-white/[0.04] bg-white/[0.01]">
+                <button
+                  onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                  className="flex items-center gap-2 text-[11px] text-gray-600 hover:text-red-400 transition-colors uppercase tracking-widest font-medium"
+                >
+                  <Trash2 size={13} /> 회원 탈퇴
+                </button>
+
+                {showDeleteConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mt-5 p-5 rounded-xl border border-red-500/20 bg-red-500/5"
+                  >
+                    <div className="flex items-start gap-3 mb-4">
+                      <AlertOctagon size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-red-400 mb-1">정말 탈퇴하시겠습니까?</p>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          탈퇴하면 <span className="text-red-400 font-semibold">모든 계정 데이터가 영구 삭제</span>됩니다.
+                          {isPro && ' Pro 정기결제도 자동으로 해지됩니다.'}
+                        </p>
+                        {isPro && (
+                          <p className="text-[10px] text-amber-500/80 mt-2 p-2 rounded bg-amber-500/5 border border-amber-500/10">
+                            ⚠️ Polar 정기결제가 있다면, <a href="https://polar.sh" target="_blank" rel="noreferrer" className="underline">Polar.sh 대시보드</a>에서 구독도 확인/취소해 주세요.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="text-[10px] text-gray-500 block mb-2 uppercase tracking-widest font-bold">
+                        확인을 위해 <span className="text-red-400 font-bold">'탈퇴합니다'</span>를 입력해주세요
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteInput}
+                        onChange={(e) => setDeleteInput(e.target.value)}
+                        placeholder="탈퇴합니다"
+                        className="w-full px-4 py-3 rounded-xl border border-red-500/20 bg-black/40 text-white text-sm placeholder-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
+                      />
+                    </div>
+
+                    {deleteError && (
+                      <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                        {deleteError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deleteInput !== '탈퇴합니다' || isDeleting}
+                        className="flex-1 py-3 bg-red-500/20 text-red-400 font-bold text-xs rounded-xl border border-red-500/30 hover:bg-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                      >
+                        {isDeleting ? (
+                          <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <><Trash2 size={13} /> 탈퇴 확인</>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); setDeleteError(''); }}
+                        className="px-5 py-3 text-gray-500 text-xs font-bold rounded-xl border border-white/[0.06] hover:bg-white/5 transition-all uppercase tracking-widest"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </div>
           </div>
