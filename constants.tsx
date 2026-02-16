@@ -15,23 +15,31 @@ export const SCRIPT_ID = '1-XYZ-SNAPQUANT-LIBRARY-ID-EXAMPLE';
 export const BRAND_NAME = 'SnapQuant';
 
 export const BRAND_LOGO = (
-  <svg viewBox="0 0 28 24" fill="none" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
-    {/* 번개(좌) + 우상향 차트(우) — 색상 분리 */}
+  <svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
     <defs>
-      <linearGradient id="logoGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#818CF8" />
+      <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#6366F1" />
         <stop offset="100%" stopColor="#F59E0B" />
       </linearGradient>
-      <linearGradient id="boltGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#A5B4FC" />
-        <stop offset="100%" stopColor="#6366F1" />
-      </linearGradient>
+      {/* 번개 글로우 필터 */}
+      <filter id="boltGlow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="1.5" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
     </defs>
-    {/* 번개 — 좌측, 인디고 그라데이션 */}
-    <path d="M10 2L5.5 11H10L7 16" stroke="url(#boltGrad)" strokeWidth="2.2" fill="none" />
-    {/* 우상향 차트선 — 우측, 인디고→앰버 그라데이션 */}
-    <polyline points="11 18 15 13 18 15.5 22 8 25 10" stroke="url(#logoGrad)" strokeWidth="2.2" fill="none" />
-    {/* 차트 끝 화살표 (상승 강조) */}
-    <polyline points="23 7 25 10 22 10.5" stroke="#F59E0B" strokeWidth="1.5" fill="none" opacity="0.8" />
+    {/* 차트 라인 */}
+    <polyline points="4 17 8 11 12 14 16 6 20 10" stroke="url(#logoGrad)" strokeWidth="2.5" fill="none" />
+    {/* 번개 — 밝은 인디고+글로우+플래시 */}
+    <path
+      d="M13 2L10 9h4l-3 7"
+      stroke="#C7D2FE"
+      strokeWidth="2"
+      fill="none"
+      filter="url(#boltGlow)"
+      className="bolt-flash"
+    />
   </svg>
 );

@@ -56,6 +56,36 @@
             background-color: #0A0A0F;
             min-height: 100vh;
         }
+
+        /* 번개 글로우 플래시 애니메이션 */
+        @keyframes bolt-flash {
+
+            0%,
+            100% {
+                opacity: 1;
+                filter: url(#boltGlow) brightness(1);
+            }
+
+            40% {
+                opacity: 0.4;
+                filter: url(#boltGlow) brightness(0.6);
+            }
+
+            60% {
+                opacity: 1;
+                filter: url(#boltGlow) brightness(1.4);
+            }
+        }
+
+        .bolt-flash {
+            animation: bolt-flash 2.5s ease-in-out infinite;
+        }
+
+        /* 로고 호버 효과 */
+        .logo-icon:hover {
+            transform: scale(1.1);
+            transition: transform 0.2s ease;
+        }
     </style>
     <script type="importmap">
 {
