@@ -12,9 +12,6 @@ import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Support from './pages/Support';
 
-// 로딩 타임아웃 (밀리초)
-const AUTH_TIMEOUT_MS = 3000;
-
 // 결제 성공 페이지 컴포넌트
 const CheckoutSuccess: React.FC<{ user: User | null; onTierChange: (tier: 'starter' | 'pro') => void }> = ({ user, onTierChange }) => {
   const [searchParams] = useSearchParams();
@@ -83,39 +80,33 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [tier, setTier] = useState<UserTier>(null);
   const [loading, setLoading] = useState(true);
-  const [authTimedOut, setAuthTimedOut] = useState(false);
+  const [tierLoading, setTierLoading] = useState(false);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setAuthTimedOut(true);
-      setLoading(false);
-    }, AUTH_TIMEOUT_MS);
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(timeout);
+    // 인증 상태 변경 — tier 조회를 블로킹하지 않음
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
+      setLoading(false);
 
       if (firebaseUser) {
-        try {
-          const t = await getUserTier(firebaseUser.uid);
-          setTier(t);
-          if (firebaseUser.email) {
-            saveUserEmail(firebaseUser.uid, firebaseUser.email);
-          }
-        } catch (e) {
-          console.error('사용자 정보 로드 실패:', e);
+        // tier 비동기 로딩 (화면 전환을 차단하지 않음)
+        setTierLoading(true);
+        getUserTier(firebaseUser.uid)
+          .then((t) => setTier(t))
+          .catch((e) => console.error('사용자 정보 로드 실패:', e))
+          .finally(() => setTierLoading(false));
+
+        // 이메일 저장 (백그라운드)
+        if (firebaseUser.email) {
+          saveUserEmail(firebaseUser.uid, firebaseUser.email);
         }
       } else {
         setTier(null);
+        setTierLoading(false);
       }
-
-      setLoading(false);
     });
 
-    return () => {
-      clearTimeout(timeout);
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Firestore 실시간 리스너 (Polar 웹훅 변경 감지)
@@ -129,8 +120,8 @@ const App: React.FC = () => {
 
   const handleTierChange = (newTier: 'starter' | 'pro') => setTier(newTier);
 
-  // 로딩 중
-  if (loading && !authTimedOut) {
+  // 초기 인증 확인 중 — 빠른 타임아웃 (Firebase는 캐시된 세션이 있으면 즉시 반환)
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -147,8 +138,16 @@ const App: React.FC = () => {
         {/* 콘솔 — 완전 독립 페이지, Navbar/Footer 없음 */}
         <Route path="/dashboard" element={
           !user ? <Navigate to="/login" replace /> :
-            !tier ? <Navigate to="/pricing" replace /> :
-              <Dashboard tier={tier} uid={user.uid} userName={user.displayName || ''} userPhoto={user.photoURL || ''} userEmail={user.email || ''} />
+            tierLoading ? (
+              <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-gray-500 mono tracking-widest uppercase">계정 정보 확인 중...</span>
+                </div>
+              </div>
+            ) :
+              !tier ? <Navigate to="/pricing" replace /> :
+                <Dashboard tier={tier} uid={user.uid} userName={user.displayName || ''} userPhoto={user.photoURL || ''} userEmail={user.email || ''} />
         } />
 
         {/* 일반 페이지 — Navbar/Footer 포함 */}

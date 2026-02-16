@@ -2,7 +2,6 @@ import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase.config';
 
 export type UserTier = 'starter' | 'pro' | null;
-export type ConsoleTheme = 'dark' | 'light';
 
 // 구독 상태 타입
 export type SubscriptionStatus = 'active' | 'canceled' | 'expired' | null;
@@ -74,28 +73,5 @@ export async function saveSubscription(uid: string, data: {
         }, { merge: true });
     } catch (e) {
         console.error('구독 정보 저장 실패:', e);
-    }
-}
-
-// 테마 조회
-export async function getUserTheme(uid: string): Promise<ConsoleTheme> {
-    try {
-        const snap = await getDoc(doc(db, 'users', uid));
-        if (snap.exists() && snap.data().consoleTheme) {
-            return snap.data().consoleTheme as ConsoleTheme;
-        }
-        return 'dark';
-    } catch (e) {
-        console.error('테마 조회 실패:', e);
-        return 'dark';
-    }
-}
-
-// 테마 설정
-export async function setUserTheme(uid: string, theme: ConsoleTheme): Promise<void> {
-    try {
-        await setDoc(doc(db, 'users', uid), { consoleTheme: theme }, { merge: true });
-    } catch (e) {
-        console.error('테마 설정 실패:', e);
     }
 }
