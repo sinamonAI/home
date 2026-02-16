@@ -12,6 +12,9 @@ import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Support from './pages/Support';
 
+// 로딩 타임아웃 (밀리초)
+const AUTH_TIMEOUT_MS = 3000;
+
 // 결제 성공 페이지 컴포넌트
 const CheckoutSuccess: React.FC<{ user: User | null; onTierChange: (tier: 'starter' | 'pro') => void }> = ({ user, onTierChange }) => {
   const [searchParams] = useSearchParams();
@@ -81,45 +84,67 @@ const App: React.FC = () => {
   const [tier, setTier] = useState<UserTier>(null);
   const [consoleTheme, setConsoleTheme] = useState<ConsoleTheme>('dark');
   const [loading, setLoading] = useState(true);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
 
   useEffect(() => {
+    // 인증 타임아웃: 3초 후에도 로딩 중이면 홈 화면 표시
+    const timeout = setTimeout(() => {
+      setAuthTimedOut(true);
+      setLoading(false);
+    }, AUTH_TIMEOUT_MS);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
+      clearTimeout(timeout); // 인증 응답 오면 타임아웃 해제
       setUser(firebaseUser);
+
       if (firebaseUser) {
-        // 초기 데이터 로드
-        const t = await getUserTier(firebaseUser.uid);
-        const theme = await getUserTheme(firebaseUser.uid);
-        setTier(t);
-        setConsoleTheme(theme);
+        try {
+          const [t, theme] = await Promise.all([
+            getUserTier(firebaseUser.uid),
+            getUserTheme(firebaseUser.uid),
+          ]);
+          setTier(t);
+          setConsoleTheme(theme);
 
-        // 이메일을 Firestore에 저장 (Polar 웹훅 매칭용)
-        if (firebaseUser.email) {
-          saveUserEmail(firebaseUser.uid, firebaseUser.email);
-        }
-
-        // Firestore 실시간 리스너 설정 (Polar 웹훅으로 변경된 값 실시간 감지)
-        const unsubSnapshot = subscribeToUserData(firebaseUser.uid, (data) => {
-          if (data.tier !== null) {
-            setTier(data.tier);
+          // 이메일을 Firestore에 저장 (Polar 웹훅 매칭용)
+          if (firebaseUser.email) {
+            saveUserEmail(firebaseUser.uid, firebaseUser.email);
           }
-        });
-
-        // 클린업: Auth 리스너가 변경되면 Firestore 리스너도 해제
-        return () => unsubSnapshot();
+        } catch (e) {
+          console.error('사용자 정보 로드 실패:', e);
+        }
       } else {
         setTier(null);
       }
+
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, []);
+
+  // Firestore 실시간 리스너 (Polar 웹훅 변경 감지)
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubSnapshot = subscribeToUserData(user.uid, (data) => {
+      if (data.tier !== null) {
+        setTier(data.tier);
+      }
+    });
+
+    return () => unsubSnapshot();
+  }, [user]);
 
   const handleTierChange = (newTier: 'starter' | 'pro') => {
     setTier(newTier);
   };
 
-  if (loading) {
+  // 로딩 중 (타임아웃 전)
+  if (loading && !authTimedOut) {
     return (
       <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
