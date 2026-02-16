@@ -177,7 +177,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all text-[11px] uppercase tracking-widest
                 ${activeMenu === item.id
                   ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                  : 'text-gray-500 border border-transparent hover:text-white hover:bg-white/5'
+                  : 'text-gray-600 border border-transparent bg-transparent hover:text-gray-300 hover:bg-white/[0.03]'
                 } ${!sidebarOpen ? 'justify-center' : ''}`}
             >
               {item.icon}
@@ -217,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
           <button
             onClick={handleSignOut}
             title="로그아웃"
-            className={`${sidebarOpen ? 'w-full px-3 py-2' : 'w-full p-2 justify-center'} flex items-center gap-2 rounded-xl text-[10px] font-bold text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all uppercase tracking-widest`}
+            className={`${sidebarOpen ? 'w-full px-3 py-2' : 'w-full p-2 justify-center'} flex items-center gap-2 rounded-xl text-[10px] font-bold text-gray-600 bg-transparent hover:text-red-400 hover:bg-red-500/5 transition-all uppercase tracking-widest`}
           >
             <LogOut size={14} />
             {sidebarOpen && 'Sign Out'}
@@ -249,7 +249,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                 onClick={() => setActiveTab('ai')}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'ai'
                   ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                  : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                  : 'text-gray-600 bg-transparent border-white/[0.04] hover:text-gray-400 hover:bg-white/[0.03]'
                   }`}
               >
                 <span className="flex items-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
@@ -258,7 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                 onClick={() => setActiveTab('templates')}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'templates'
                   ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                  : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                  : 'text-gray-600 bg-transparent border-white/[0.04] hover:text-gray-400 hover:bg-white/[0.03]'
                   }`}
               >
                 <span className="flex items-center gap-2"><TrendingUp size={14} /> 검증된 전략</span>
