@@ -25,7 +25,8 @@ const plans = [
       '주 1회 AI 전략 코드 생성'
     ],
     buttonText: 'Start Free',
-    color: '#00D1FF',
+    color: '#3B82F6',       // 블루
+    gradient: 'from-blue-500 to-blue-600',
   },
   {
     id: 'pro' as const,
@@ -40,7 +41,8 @@ const plans = [
       '주식 성과 분석 대시보드 제공'
     ],
     buttonText: 'Upgrade to Pro',
-    color: '#00FF41',
+    color: '#6366F1',       // 인디고
+    gradient: 'from-indigo-500 to-indigo-600',
   }
 ];
 
@@ -49,6 +51,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   const [selected, setSelected] = useState<'starter' | 'pro'>(currentTier === 'starter' ? 'starter' : 'pro');
   const [saving, setSaving] = useState(false);
 
+  // 플랜 선택 처리
   const handleSelect = async (planId: 'starter' | 'pro') => {
     setSelected(planId);
 
@@ -64,14 +67,15 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   };
 
   return (
-    <div className="pt-20 pb-4 px-6 bg-black relative overflow-hidden flex-1 flex flex-col">
+    <div className="pt-20 pb-4 px-6 bg-[#0A0A0F] relative overflow-hidden flex-1 flex flex-col">
       <div className="max-w-7xl mx-auto text-center mb-6 relative z-10">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-6xl font-black mb-2 tracking-tighter uppercase italic"
+          className="text-4xl md:text-6xl font-black mb-2 tracking-tighter"
         >
-          SELECT YOUR <br /><span className="text-[#00FF41]">TIER.</span>
+          Select Your <br />
+          <span className="bg-gradient-to-r from-indigo-400 to-amber-400 bg-clip-text text-transparent">Tier.</span>
         </motion.h1>
         <p className="text-base text-gray-500 font-medium max-w-2xl mx-auto">
           서버 유지비 $0. 오직 당신의 전략에만 집중하세요.
@@ -80,7 +84,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 text-[#00FF41] text-sm font-bold"
+            className="mt-4 text-indigo-400 text-sm font-bold"
           >
             ✦ 플랜을 선택하면 콘솔에 바로 접속할 수 있습니다
           </motion.p>
@@ -91,7 +95,6 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
         {plans.map((plan) => {
           const isCurrentTier = currentTier === plan.id;
           const isSelected = selected === plan.id;
-          const accentColor = plan.color;
 
           return (
             <motion.div
@@ -100,29 +103,29 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               onClick={() => setSelected(plan.id)}
-              className={`p-6 md:p-8 rounded-[2rem] flex flex-col relative overflow-hidden transition-all duration-500 cursor-pointer ${isSelected
-                ? 'bg-gradient-to-br from-[#050A14] to-black shadow-[0_0_50px_rgba(0,255,65,0.15)]'
-                : 'bg-white/5 hover:bg-white/[0.07]'
+              className={`p-6 md:p-8 rounded-3xl flex flex-col relative overflow-hidden transition-all duration-500 cursor-pointer ${isSelected
+                ? 'bg-white/[0.04] shadow-2xl'
+                : 'bg-white/[0.02] hover:bg-white/[0.03]'
                 }`}
               style={{
-                border: isSelected ? `2px solid ${accentColor}` : '1px solid rgba(255,255,255,0.15)',
+                border: isSelected ? `2px solid ${plan.color}` : '1px solid rgba(255,255,255,0.06)',
               }}
             >
               {isCurrentTier && (
-                <div className="absolute top-6 right-6 px-3 py-1 bg-white/10 text-white text-[10px] font-black rounded-full uppercase tracking-widest border border-white/20">
+                <div className="absolute top-6 right-6 px-3 py-1 bg-white/10 text-white text-[10px] font-bold rounded-full uppercase tracking-widest border border-white/20">
                   Current Plan
                 </div>
               )}
               {isSelected && !isCurrentTier && (
                 <div
-                  className="absolute top-6 right-6 px-3 py-1 text-black text-[10px] font-black rounded-full uppercase tracking-widest"
-                  style={{ backgroundColor: accentColor }}
+                  className="absolute top-6 right-6 px-3 py-1 text-white text-[10px] font-bold rounded-full uppercase tracking-widest"
+                  style={{ backgroundColor: plan.color }}
                 >
                   Selected
                 </div>
               )}
-              <h2 className="text-3xl font-black mb-2 uppercase italic tracking-tight">{plan.title}</h2>
-              <div className="text-4xl font-black mb-2 tracking-tighter" style={{ color: isSelected ? accentColor : 'white' }}>
+              <h2 className="text-3xl font-bold mb-2 tracking-tight">{plan.title}</h2>
+              <div className="text-4xl font-black mb-2 tracking-tighter" style={{ color: isSelected ? plan.color : 'white' }}>
                 {plan.price}
                 {plan.price !== 'Free' && <span className="text-lg text-gray-500 font-normal ml-2">/ month</span>}
               </div>
@@ -131,7 +134,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
               <ul className="space-y-2 mb-6 flex-1">
                 {plan.features.map((f: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-gray-300 font-medium">
-                    <Check size={18} style={{ color: accentColor }} className="flex-shrink-0" /> {f}
+                    <Check size={18} style={{ color: plan.color }} className="flex-shrink-0" /> {f}
                   </li>
                 ))}
               </ul>
@@ -139,17 +142,13 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
               <button
                 onClick={(e) => { e.stopPropagation(); handleSelect(plan.id); }}
                 disabled={saving}
-                className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-3 ${isSelected
-                  ? 'text-black hover:scale-105'
-                  : 'bg-white/5 text-white border border-white/20 hover:bg-white/10'
+                className={`w-full py-5 rounded-2xl font-bold text-sm uppercase tracking-[0.15em] transition-all duration-500 flex items-center justify-center gap-3 ${isSelected
+                  ? `bg-gradient-to-r ${plan.gradient} text-white shadow-lg hover:scale-105`
+                  : 'bg-white/5 text-white border border-white/[0.08] hover:bg-white/10'
                   }`}
-                style={isSelected ? {
-                  backgroundColor: accentColor,
-                  boxShadow: `0 0 30px ${accentColor}40`
-                } : {}}
               >
                 {saving ? (
-                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     {isCurrentTier ? 'Current Plan' : plan.buttonText}
@@ -162,9 +161,9 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
         })}
       </div>
 
-      {/* Decorative Orbs */}
-      <div className="absolute top-[20%] left-[-10%] w-[50%] h-[50%] bg-[#00FF41]/5 blur-[150px] rounded-full" />
-      <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[50%] bg-[#00D1FF]/5 blur-[150px] rounded-full" />
+      {/* 장식 Orb */}
+      <div className="absolute top-[20%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/5 blur-[150px] rounded-full" />
+      <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 blur-[150px] rounded-full" />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 {
-  "name": "algocloud---cybernetic-trading-bot",
+  "name": "snapquant",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -41,15 +41,18 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#00FF41] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-gray-500 mono tracking-widest uppercase">Loading SnapQuant...</span>
+        </div>
       </div>
     );
   }
 
   return (
     <Router>
-      <div className="min-h-screen selection:bg-[#00FF41] selection:text-black">
+      <div className="min-h-screen selection:bg-indigo-500/30 selection:text-white">
         <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
         <MatrixBackground />
 
@@ -76,19 +79,21 @@ const App: React.FC = () => {
           </Routes>
         </main>
 
-        <footer className="py-6 border-t border-white/15 bg-black px-6">
+        <footer className="py-8 border-t border-white/[0.06] bg-[#0A0A0F] px-6">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="flex flex-col items-center md:items-start gap-3">
-              <div className="text-xl font-black mono text-white">QUANTDRIVE</div>
-              <div className="text-gray-500 text-[10px] mono uppercase tracking-widest">
-                © 2025 QUANTDRIVE. ALL RIGHTS RESERVED.
+              <div className="text-lg font-extrabold mono bg-gradient-to-r from-indigo-400 to-amber-400 bg-clip-text text-transparent">
+                SNAPQUANT
+              </div>
+              <div className="text-gray-600 text-[10px] mono uppercase tracking-widest">
+                © 2025 SNAPQUANT. ALL RIGHTS RESERVED.
               </div>
             </div>
-            <div className="flex gap-8 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">
-              <a href="#" className="hover:text-[#00FF41] transition-colors">Privacy</a>
-              <a href="#" className="hover:text-[#00FF41] transition-colors">Terms</a>
-              <a href="#" className="hover:text-[#00FF41] transition-colors">Legal</a>
-              <a href="#" className="hover:text-[#00FF41] transition-colors">Status</a>
+            <div className="flex gap-8 text-gray-500 text-[10px] font-semibold uppercase tracking-[0.15em]">
+              <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>
+              <a href="#" className="hover:text-indigo-400 transition-colors">Terms</a>
+              <a href="#" className="hover:text-indigo-400 transition-colors">Legal</a>
+              <a href="#" className="hover:text-indigo-400 transition-colors">Status</a>
             </div>
           </div>
         </footer>

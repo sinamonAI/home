@@ -1,28 +1,28 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Safe initialization
-const apiKey = process.env.API_KEY || '';
+// 안전한 초기화 - 환경변수에서 API 키 로드
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 let ai: any = null;
 
 if (apiKey) {
   try {
     ai = new GoogleGenAI({ apiKey });
   } catch (e) {
-    console.error("Failed to initialize Gemini AI:", e);
+    console.error("Gemini AI 초기화 실패:", e);
   }
 }
 
 const SYSTEM_INSTRUCTION = `
-You are an AI coding expert for AlgoCloud, a Google Apps Script (GAS) based trading platform.
-Your task is to convert user's natural language trading strategy into a "Consumer Script" that uses the 'AlgoCloudLibrary'.
+You are an AI coding expert for SnapQuant, a Google Apps Script (GAS) based trading platform.
+Your task is to convert user's natural language trading strategy into a "Consumer Script" that uses the 'SnapQuantLibrary'.
 
-The 'AlgoCloudLibrary' provides the following global functions:
-1. AlgoCloud.placeOrder(symbol, side, quantity) - side is 'BUY' or 'SELL'
-2. AlgoCloud.getCurrentPrice(symbol) - returns a number
-3. AlgoCloud.getRSI(symbol, period) - returns RSI value
-4. AlgoCloud.getMovingAverage(symbol, period) - returns MA value
-5. AlgoCloud.notify(message) - sends notification to Slack/Telegram
+The 'SnapQuantLibrary' provides the following global functions:
+1. SnapQuant.placeOrder(symbol, side, quantity) - side is 'BUY' or 'SELL'
+2. SnapQuant.getCurrentPrice(symbol) - returns a number
+3. SnapQuant.getRSI(symbol, period) - returns RSI value
+4. SnapQuant.getMovingAverage(symbol, period) - returns MA value
+5. SnapQuant.notify(message) - sends notification to Slack/Telegram
 
 Rules:
 - Generate ONLY the JavaScript code block for Google Apps Script.
@@ -31,14 +31,16 @@ Rules:
 - Ensure the code is robust and follows the library's pattern.
 `;
 
-export const generateTradingCode = async (prompt: string) => {
+// AI 코드 생성 함수 (최대 3회 재시도)
+export const generateTradingCode = async (prompt: string, retryCount = 0): Promise<string> => {
+  const MAX_RETRIES = 3;
+
   if (!ai) {
-    console.warn("Gemini AI not initialized (Missing API Key)");
-    return "// Error: AI Service not configured. Please check API Key.";
+    console.warn("Gemini AI 미설정 (API Key 없음)");
+    return "// 오류: AI 서비스가 설정되지 않았습니다. API Key를 확인해주세요.";
   }
 
   try {
-    // Using gemini-3-pro-preview for complex coding tasks as per guidelines
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
@@ -49,10 +51,17 @@ export const generateTradingCode = async (prompt: string) => {
       },
     });
 
-    // Access the text property directly from the GenerateContentResponse object
     return response.text;
-  } catch (error) {
-    console.error("Error generating code:", error);
-    return "// Error generating code. Please try again later.";
+  } catch (error: any) {
+    console.error(`코드 생성 오류 (시도 ${retryCount + 1}/${MAX_RETRIES}):`, error);
+
+    // 재시도 로직 (지수 백오프)
+    if (retryCount < MAX_RETRIES - 1) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return generateTradingCode(prompt, retryCount + 1);
+    }
+
+    return "// 오류: 코드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.";
   }
 };
