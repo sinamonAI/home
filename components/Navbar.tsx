@@ -39,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto, tier }
           <Link to="/" className="hover:text-white transition-colors">Home</Link>
           <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
           <Link to="/support" className="hover:text-white transition-colors">Support</Link>
-          <Link to="/dashboard" className="text-indigo-400 hover:text-indigo-300 transition-all">Console</Link>
+          <Link to={isLoggedIn ? "/dashboard" : "/login"} className="text-indigo-400 hover:text-indigo-300 transition-all">Console</Link>
         </div>
 
         {/* 데스크톱 우측 */}
@@ -90,7 +90,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userName, userPhoto, tier }
             <Link to="/" onClick={() => setIsOpen(false)} className="hover:text-white transition-colors">Home</Link>
             <Link to="/pricing" onClick={() => setIsOpen(false)} className="hover:text-white transition-colors">Pricing</Link>
             <Link to="/support" onClick={() => setIsOpen(false)} className="hover:text-white transition-colors">Support</Link>
-            <Link to="/dashboard" onClick={() => setIsOpen(false)} className="text-indigo-400">Console</Link>
+            <Link to={isLoggedIn ? "/dashboard" : "/login"} onClick={() => setIsOpen(false)} className="text-indigo-400">Console</Link>
           </div>
 
           <div className="flex justify-center">

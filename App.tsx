@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './services/firebase.config';
-import { getUserTier, getUserTheme, saveSubscription, saveUserEmail, subscribeToUserData, UserTier, ConsoleTheme } from './services/userService';
+import { getUserTier, saveSubscription, saveUserEmail, subscribeToUserData, UserTier } from './services/userService';
 import Navbar from './components/Navbar';
 import MatrixBackground from './components/MatrixBackground';
 import Home from './pages/Home';
@@ -82,31 +82,23 @@ const CheckoutSuccess: React.FC<{ user: User | null; onTierChange: (tier: 'start
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [tier, setTier] = useState<UserTier>(null);
-  const [consoleTheme, setConsoleTheme] = useState<ConsoleTheme>('dark');
   const [loading, setLoading] = useState(true);
   const [authTimedOut, setAuthTimedOut] = useState(false);
 
   useEffect(() => {
-    // 인증 타임아웃: 3초 후에도 로딩 중이면 홈 화면 표시
     const timeout = setTimeout(() => {
       setAuthTimedOut(true);
       setLoading(false);
     }, AUTH_TIMEOUT_MS);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      clearTimeout(timeout); // 인증 응답 오면 타임아웃 해제
+      clearTimeout(timeout);
       setUser(firebaseUser);
 
       if (firebaseUser) {
         try {
-          const [t, theme] = await Promise.all([
-            getUserTier(firebaseUser.uid),
-            getUserTheme(firebaseUser.uid),
-          ]);
+          const t = await getUserTier(firebaseUser.uid);
           setTier(t);
-          setConsoleTheme(theme);
-
-          // 이메일을 Firestore에 저장 (Polar 웹훅 매칭용)
           if (firebaseUser.email) {
             saveUserEmail(firebaseUser.uid, firebaseUser.email);
           }
@@ -129,21 +121,15 @@ const App: React.FC = () => {
   // Firestore 실시간 리스너 (Polar 웹훅 변경 감지)
   useEffect(() => {
     if (!user) return;
-
     const unsubSnapshot = subscribeToUserData(user.uid, (data) => {
-      if (data.tier !== null) {
-        setTier(data.tier);
-      }
+      if (data.tier !== null) setTier(data.tier);
     });
-
     return () => unsubSnapshot();
   }, [user]);
 
-  const handleTierChange = (newTier: 'starter' | 'pro') => {
-    setTier(newTier);
-  };
+  const handleTierChange = (newTier: 'starter' | 'pro') => setTier(newTier);
 
-  // 로딩 중 (타임아웃 전)
+  // 로딩 중
   if (loading && !authTimedOut) {
     return (
       <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
@@ -157,58 +143,58 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <div className="min-h-screen selection:bg-indigo-500/30 selection:text-white">
-        <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
-        <MatrixBackground />
+      <Routes>
+        {/* 콘솔 — 완전 독립 페이지, Navbar/Footer 없음 */}
+        <Route path="/dashboard" element={
+          !user ? <Navigate to="/login" replace /> :
+            !tier ? <Navigate to="/pricing" replace /> :
+              <Dashboard tier={tier} uid={user.uid} userName={user.displayName || ''} userPhoto={user.photoURL || ''} userEmail={user.email || ''} />
+        } />
 
-        <main className="relative">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={
-              user ? <Navigate to={tier ? "/dashboard" : "/pricing"} replace /> : <Login />
-            } />
-            <Route path="/dashboard" element={
-              !user ? <Navigate to="/login" replace /> :
-                !tier ? <Navigate to="/pricing" replace /> :
-                  <Dashboard tier={tier} theme={consoleTheme} uid={user.uid} onThemeChange={setConsoleTheme} />
-            } />
-            {/* Pricing: 로그인 필수 */}
-            <Route path="/pricing" element={
-              !user ? <Navigate to="/login" replace /> :
-                <Pricing
-                  isLoggedIn={true}
-                  currentTier={tier}
-                  uid={user.uid}
-                  userEmail={user.email || undefined}
-                  onTierChange={handleTierChange}
-                />
-            } />
-            <Route path="/support" element={<Support />} />
-            <Route path="/checkout/success" element={
-              <CheckoutSuccess user={user} onTierChange={handleTierChange} />
-            } />
-          </Routes>
-        </main>
-
-        <footer className="py-8 border-t border-white/[0.06] bg-[#0A0A0F] px-6">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex flex-col items-center md:items-start gap-3">
-              <div className="text-lg font-extrabold mono bg-gradient-to-r from-indigo-400 to-amber-400 bg-clip-text text-transparent">
-                SNAPQUANT
+        {/* 일반 페이지 — Navbar/Footer 포함 */}
+        <Route path="*" element={
+          <div className="min-h-screen selection:bg-indigo-500/30 selection:text-white">
+            <Navbar isLoggedIn={!!user} userName={user?.displayName || undefined} userPhoto={user?.photoURL || undefined} tier={tier} />
+            <MatrixBackground />
+            <main className="relative">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={
+                  user ? <Navigate to={tier ? "/dashboard" : "/pricing"} replace /> : <Login />
+                } />
+                {/* Pricing — 비로그인도 접근 가능 */}
+                <Route path="/pricing" element={
+                  <Pricing
+                    isLoggedIn={!!user}
+                    currentTier={tier}
+                    uid={user?.uid}
+                    userEmail={user?.email || undefined}
+                    onTierChange={handleTierChange}
+                  />
+                } />
+                <Route path="/support" element={<Support />} />
+                <Route path="/checkout/success" element={
+                  <CheckoutSuccess user={user} onTierChange={handleTierChange} />
+                } />
+              </Routes>
+            </main>
+            <footer className="py-8 border-t border-white/[0.06] bg-[#0A0A0F] px-6">
+              <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex flex-col items-center md:items-start gap-3">
+                  <div className="text-lg font-extrabold mono bg-gradient-to-r from-indigo-400 to-amber-400 bg-clip-text text-transparent">SNAPQUANT</div>
+                  <div className="text-gray-600 text-[10px] mono uppercase tracking-widest">© 2025 SNAPQUANT. ALL RIGHTS RESERVED.</div>
+                </div>
+                <div className="flex gap-8 text-gray-500 text-[10px] font-semibold uppercase tracking-[0.15em]">
+                  <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>
+                  <a href="#" className="hover:text-indigo-400 transition-colors">Terms</a>
+                  <a href="#" className="hover:text-indigo-400 transition-colors">Legal</a>
+                  <a href="#" className="hover:text-indigo-400 transition-colors">Status</a>
+                </div>
               </div>
-              <div className="text-gray-600 text-[10px] mono uppercase tracking-widest">
-                © 2025 SNAPQUANT. ALL RIGHTS RESERVED.
-              </div>
-            </div>
-            <div className="flex gap-8 text-gray-500 text-[10px] font-semibold uppercase tracking-[0.15em]">
-              <a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-indigo-400 transition-colors">Terms</a>
-              <a href="#" className="hover:text-indigo-400 transition-colors">Legal</a>
-              <a href="#" className="hover:text-indigo-400 transition-colors">Status</a>
-            </div>
+            </footer>
           </div>
-        </footer>
-      </div>
+        } />
+      </Routes>
     </Router>
   );
 };
