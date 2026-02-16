@@ -2,15 +2,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Zap, Cpu, ArrowRight } from 'lucide-react';
-import { setUserTier, UserTier } from '../services/userService';
+import { Check, Zap, Cpu, ArrowRight, ExternalLink } from 'lucide-react';
+import { setUserTier, saveSubscription, UserTier } from '../services/userService';
 
 interface PricingProps {
   isLoggedIn?: boolean;
   currentTier?: UserTier;
   uid?: string;
+  userEmail?: string;
   onTierChange?: (tier: 'starter' | 'pro') => void;
 }
+
+// Polar 결제 링크
+const POLAR_LINKS = {
+  starter: 'https://buy.polar.sh/polar_cl_FyqxqCMsri1r8sNCNIeeWAPxoneGY5tBSG5E624HxkH',
+  pro: 'https://buy.polar.sh/polar_cl_1gNNt29GVLjoJarg8y7MWoMEBHSCwi5MlZU7W2z9PlL',
+};
 
 const plans = [
   {
@@ -25,13 +32,13 @@ const plans = [
       '주 1회 AI 전략 코드 생성'
     ],
     buttonText: 'Start Free',
-    color: '#3B82F6',       // 블루
+    color: '#3B82F6',
     gradient: 'from-blue-500 to-blue-600',
   },
   {
     id: 'pro' as const,
     title: 'Quant Pro',
-    price: '$29',
+    price: '$29.99',
     desc: '전문가급 시스템 트레이딩을 위한 프리미엄 솔루션',
     features: [
       'Premium Library ID (속도 최적화)',
@@ -41,12 +48,12 @@ const plans = [
       '주식 성과 분석 대시보드 제공'
     ],
     buttonText: 'Upgrade to Pro',
-    color: '#6366F1',       // 인디고
+    color: '#6366F1',
     gradient: 'from-indigo-500 to-indigo-600',
   }
 ];
 
-const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierChange }) => {
+const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, userEmail, onTierChange }) => {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<'starter' | 'pro'>(currentTier === 'starter' ? 'starter' : 'pro');
   const [saving, setSaving] = useState(false);
@@ -55,14 +62,29 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
   const handleSelect = async (planId: 'starter' | 'pro') => {
     setSelected(planId);
 
-    if (isLoggedIn && uid) {
-      setSaving(true);
-      await setUserTier(uid, planId);
-      onTierChange?.(planId);
-      setSaving(false);
-      navigate('/dashboard');
+    if (planId === 'starter') {
+      // Starter(Free)는 즉시 적용
+      if (isLoggedIn && uid) {
+        setSaving(true);
+        await setUserTier(uid, 'starter');
+        onTierChange?.('starter');
+        setSaving(false);
+        navigate('/dashboard');
+      } else {
+        // 비로그인 시 Polar Starter 링크로 이동
+        window.open(POLAR_LINKS.starter, '_blank');
+      }
     } else {
-      navigate('/login');
+      // Pro는 Polar 결제 페이지로 리다이렉트
+      let checkoutUrl = POLAR_LINKS.pro;
+
+      // 로그인된 사용자 이메일을 URL 파라미터로 전달
+      if (userEmail) {
+        checkoutUrl += `?customer_email=${encodeURIComponent(userEmail)}`;
+      }
+
+      // 결제 페이지로 이동 (새 탭)
+      window.open(checkoutUrl, '_blank');
     }
   };
 
@@ -95,6 +117,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
         {plans.map((plan) => {
           const isCurrentTier = currentTier === plan.id;
           const isSelected = selected === plan.id;
+          const isPro = plan.id === 'pro';
 
           return (
             <motion.div
@@ -121,7 +144,7 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
                   className="absolute top-6 right-6 px-3 py-1 text-white text-[10px] font-bold rounded-full uppercase tracking-widest"
                   style={{ backgroundColor: plan.color }}
                 >
-                  Selected
+                  {isPro ? 'Popular' : 'Selected'}
                 </div>
               )}
               <h2 className="text-3xl font-bold mb-2 tracking-tight">{plan.title}</h2>
@@ -141,21 +164,28 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, onTierC
 
               <button
                 onClick={(e) => { e.stopPropagation(); handleSelect(plan.id); }}
-                disabled={saving}
+                disabled={saving || isCurrentTier}
                 className={`w-full py-5 rounded-2xl font-bold text-sm uppercase tracking-[0.15em] transition-all duration-500 flex items-center justify-center gap-3 ${isSelected
                   ? `bg-gradient-to-r ${plan.gradient} text-white shadow-lg hover:scale-105`
                   : 'bg-white/5 text-white border border-white/[0.08] hover:bg-white/10'
-                  }`}
+                  } ${isCurrentTier ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {saving ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     {isCurrentTier ? 'Current Plan' : plan.buttonText}
-                    {!isCurrentTier && <ArrowRight size={16} />}
+                    {!isCurrentTier && (isPro ? <ExternalLink size={16} /> : <ArrowRight size={16} />)}
                   </>
                 )}
               </button>
+
+              {/* Polar 결제 보안 표시 (Pro만) */}
+              {isPro && (
+                <p className="text-center text-gray-600 text-[10px] mt-3 font-medium">
+                  🔒 Polar.sh 통한 안전한 결제 · 언제든 취소 가능
+                </p>
+              )}
             </motion.div>
           );
         })}
