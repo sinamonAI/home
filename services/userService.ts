@@ -1,38 +1,18 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase.config';
 
 export type UserTier = 'starter' | 'pro' | null;
 export type ConsoleTheme = 'dark' | 'light';
 
-// 구독 정보 타입
-export interface SubscriptionData {
-    tier: UserTier;
-    checkoutId?: string;
-    subscribedAt?: string;
-    expiresAt?: string;
-    status?: 'active' | 'canceled' | 'expired';
-}
+// 구독 상태 타입
+export type SubscriptionStatus = 'active' | 'canceled' | 'expired' | null;
 
 // 사용자 티어 조회
 export async function getUserTier(uid: string): Promise<UserTier> {
     try {
         const snap = await getDoc(doc(db, 'users', uid));
         if (snap.exists()) {
-            // 만료일 확인
-            const data = snap.data();
-            if (data.tier === 'pro' && data.expiresAt) {
-                const now = new Date();
-                const expiry = new Date(data.expiresAt);
-                if (now > expiry) {
-                    // 구독 만료 → starter로 변경
-                    await setDoc(doc(db, 'users', uid), {
-                        tier: 'starter',
-                        status: 'expired'
-                    }, { merge: true });
-                    return 'starter';
-                }
-            }
-            return (data.tier as UserTier) || null;
+            return (snap.data().tier as UserTier) || null;
         }
         return null;
     } catch (e) {
@@ -50,47 +30,50 @@ export async function setUserTier(uid: string, tier: 'starter' | 'pro'): Promise
     }
 }
 
+// 사용자 이메일 저장 (웹훅 매칭용)
+export async function saveUserEmail(uid: string, email: string): Promise<void> {
+    try {
+        await setDoc(doc(db, 'users', uid), { email }, { merge: true });
+    } catch (e) {
+        console.error('이메일 저장 실패:', e);
+    }
+}
+
+// Firestore 실시간 구독 리스너
+// tier 변경 시 콜백 호출 (Polar 웹훅으로 변경된 값을 실시간 감지)
+export function subscribeToUserData(
+    uid: string,
+    onChange: (data: { tier: UserTier; subscriptionStatus: SubscriptionStatus }) => void
+): () => void {
+    const unsubscribe = onSnapshot(doc(db, 'users', uid), (snap) => {
+        if (snap.exists()) {
+            const data = snap.data();
+            onChange({
+                tier: (data.tier as UserTier) || null,
+                subscriptionStatus: (data.subscriptionStatus as SubscriptionStatus) || null,
+            });
+        }
+    }, (error) => {
+        console.error('실시간 리스너 오류:', error);
+    });
+
+    return unsubscribe;
+}
+
 // 구독 정보 저장 (결제 성공 시)
 export async function saveSubscription(uid: string, data: {
     checkoutId: string;
     tier: 'pro';
 }): Promise<void> {
     try {
-        const now = new Date();
-        // 구독 시작일 기준 30일 후 만료
-        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
         await setDoc(doc(db, 'users', uid), {
             tier: data.tier,
             checkoutId: data.checkoutId,
-            subscribedAt: now.toISOString(),
-            expiresAt: expiresAt.toISOString(),
-            status: 'active',
+            subscribedAt: new Date().toISOString(),
+            subscriptionStatus: 'active',
         }, { merge: true });
     } catch (e) {
         console.error('구독 정보 저장 실패:', e);
-    }
-}
-
-// 구독 활성 상태 확인
-export async function isSubscriptionActive(uid: string): Promise<boolean> {
-    try {
-        const snap = await getDoc(doc(db, 'users', uid));
-        if (!snap.exists()) return false;
-
-        const data = snap.data();
-        if (data.tier !== 'pro') return false;
-
-        // 만료일 확인
-        if (data.expiresAt) {
-            return new Date() < new Date(data.expiresAt);
-        }
-
-        // 만료일 없으면 활성으로 간주
-        return true;
-    } catch (e) {
-        console.error('구독 상태 확인 실패:', e);
-        return false;
     }
 }
 

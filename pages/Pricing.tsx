@@ -2,11 +2,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Zap, Cpu, ArrowRight, ExternalLink } from 'lucide-react';
-import { setUserTier, saveSubscription, UserTier } from '../services/userService';
+import { Check, ArrowRight, ExternalLink, Shield } from 'lucide-react';
+import { setUserTier, UserTier } from '../services/userService';
 
 interface PricingProps {
-  isLoggedIn?: boolean;
+  isLoggedIn: boolean;
   currentTier?: UserTier;
   uid?: string;
   userEmail?: string;
@@ -58,32 +58,25 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, userEma
   const [selected, setSelected] = useState<'starter' | 'pro'>(currentTier === 'starter' ? 'starter' : 'pro');
   const [saving, setSaving] = useState(false);
 
-  // 플랜 선택 처리
+  // 플랜 선택 처리 (로그인 상태만 접근 가능)
   const handleSelect = async (planId: 'starter' | 'pro') => {
     setSelected(planId);
 
     if (planId === 'starter') {
       // Starter(Free)는 즉시 적용
-      if (isLoggedIn && uid) {
+      if (uid) {
         setSaving(true);
         await setUserTier(uid, 'starter');
         onTierChange?.('starter');
         setSaving(false);
         navigate('/dashboard');
-      } else {
-        // 비로그인 시 Polar Starter 링크로 이동
-        window.open(POLAR_LINKS.starter, '_blank');
       }
     } else {
-      // Pro는 Polar 결제 페이지로 리다이렉트
+      // Pro는 Polar 결제 페이지로 리다이렉트 (이메일 자동 전달)
       let checkoutUrl = POLAR_LINKS.pro;
-
-      // 로그인된 사용자 이메일을 URL 파라미터로 전달
       if (userEmail) {
         checkoutUrl += `?customer_email=${encodeURIComponent(userEmail)}`;
       }
-
-      // 결제 페이지로 이동 (새 탭)
       window.open(checkoutUrl, '_blank');
     }
   };
@@ -102,11 +95,26 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, userEma
         <p className="text-base text-gray-500 font-medium max-w-2xl mx-auto">
           서버 유지비 $0. 오직 당신의 전략에만 집중하세요.
         </p>
-        {isLoggedIn && !currentTier && (
+
+        {/* 로그인된 사용자 이메일 표시 */}
+        {userEmail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-4 flex items-center justify-center gap-2 text-sm"
+          >
+            <Shield size={14} className="text-green-400" />
+            <span className="text-gray-400">
+              <span className="text-indigo-400 font-semibold">{userEmail}</span> 계정으로 결제됩니다
+            </span>
+          </motion.div>
+        )}
+
+        {!currentTier && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 text-indigo-400 text-sm font-bold"
+            className="mt-3 text-indigo-400 text-sm font-bold"
           >
             ✦ 플랜을 선택하면 콘솔에 바로 접속할 수 있습니다
           </motion.p>
@@ -135,16 +143,13 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, userEma
               }}
             >
               {isCurrentTier && (
-                <div className="absolute top-6 right-6 px-3 py-1 bg-white/10 text-white text-[10px] font-bold rounded-full uppercase tracking-widest border border-white/20">
-                  Current Plan
+                <div className="absolute top-6 right-6 px-3 py-1 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-widest border border-green-500/30">
+                  ✓ Current Plan
                 </div>
               )}
-              {isSelected && !isCurrentTier && (
-                <div
-                  className="absolute top-6 right-6 px-3 py-1 text-white text-[10px] font-bold rounded-full uppercase tracking-widest"
-                  style={{ backgroundColor: plan.color }}
-                >
-                  {isPro ? 'Popular' : 'Selected'}
+              {isSelected && !isCurrentTier && isPro && (
+                <div className="absolute top-6 right-6 px-3 py-1 bg-indigo-500 text-white text-[10px] font-bold rounded-full uppercase tracking-widest">
+                  Popular
                 </div>
               )}
               <h2 className="text-3xl font-bold mb-2 tracking-tight">{plan.title}</h2>
@@ -174,16 +179,15 @@ const Pricing: React.FC<PricingProps> = ({ isLoggedIn, currentTier, uid, userEma
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    {isCurrentTier ? 'Current Plan' : plan.buttonText}
+                    {isCurrentTier ? '✓ Current Plan' : plan.buttonText}
                     {!isCurrentTier && (isPro ? <ExternalLink size={16} /> : <ArrowRight size={16} />)}
                   </>
                 )}
               </button>
 
-              {/* Polar 결제 보안 표시 (Pro만) */}
               {isPro && (
                 <p className="text-center text-gray-600 text-[10px] mt-3 font-medium">
-                  🔒 Polar.sh 통한 안전한 결제 · 언제든 취소 가능
+                  🔒 Polar.sh 통한 안전한 결제 · 언제든 취소 가능 · 실시간 라이센스 동기화
                 </p>
               )}
             </motion.div>

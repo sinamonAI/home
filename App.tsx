@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './services/firebase.config';
-import { getUserTier, getUserTheme, saveSubscription, UserTier, ConsoleTheme } from './services/userService';
+import { getUserTier, getUserTheme, saveSubscription, saveUserEmail, subscribeToUserData, UserTier, ConsoleTheme } from './services/userService';
 import Navbar from './components/Navbar';
 import MatrixBackground from './components/MatrixBackground';
 import Home from './pages/Home';
@@ -23,29 +23,21 @@ const CheckoutSuccess: React.FC<{ user: User | null; onTierChange: (tier: 'start
       const checkoutId = searchParams.get('checkout_id');
 
       if (!user) {
-        // 로그인 안 된 경우 로그인 페이지로
         navigate('/login');
         return;
       }
 
       if (checkoutId) {
         try {
-          // Pro 구독 정보 Firebase에 저장
-          await saveSubscription(user.uid, {
-            checkoutId,
-            tier: 'pro',
-          });
+          await saveSubscription(user.uid, { checkoutId, tier: 'pro' });
           onTierChange('pro');
           setStatus('success');
-
-          // 2초 후 대시보드로 이동
           setTimeout(() => navigate('/dashboard'), 2000);
         } catch (e) {
           console.error('결제 처리 오류:', e);
           setStatus('error');
         }
       } else {
-        // checkout_id가 없으면 대시보드로
         navigate('/dashboard');
       }
     };
@@ -64,24 +56,17 @@ const CheckoutSuccess: React.FC<{ user: User | null; onTierChange: (tier: 'start
         )}
         {status === 'success' && (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-amber-500 rounded-full flex items-center justify-center text-white text-3xl">
-              ✓
-            </div>
+            <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-amber-500 rounded-full flex items-center justify-center text-white text-3xl">✓</div>
             <h2 className="text-2xl font-bold text-white">Pro 업그레이드 완료! 🎉</h2>
             <p className="text-gray-400">잠시 후 대시보드로 이동합니다...</p>
           </div>
         )}
         {status === 'error' && (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center text-red-400 text-3xl">
-              ✗
-            </div>
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center text-red-400 text-3xl">✗</div>
             <h2 className="text-2xl font-bold text-white">처리 중 오류 발생</h2>
             <p className="text-gray-400">support@snapquant.io로 문의해주세요.</p>
-            <button
-              onClick={() => navigate('/pricing')}
-              className="mt-4 px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
-            >
+            <button onClick={() => navigate('/pricing')} className="mt-4 px-6 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors">
               다시 시도
             </button>
           </div>
@@ -102,10 +87,26 @@ const App: React.FC = () => {
       setLoading(true);
       setUser(firebaseUser);
       if (firebaseUser) {
+        // 초기 데이터 로드
         const t = await getUserTier(firebaseUser.uid);
         const theme = await getUserTheme(firebaseUser.uid);
         setTier(t);
         setConsoleTheme(theme);
+
+        // 이메일을 Firestore에 저장 (Polar 웹훅 매칭용)
+        if (firebaseUser.email) {
+          saveUserEmail(firebaseUser.uid, firebaseUser.email);
+        }
+
+        // Firestore 실시간 리스너 설정 (Polar 웹훅으로 변경된 값 실시간 감지)
+        const unsubSnapshot = subscribeToUserData(firebaseUser.uid, (data) => {
+          if (data.tier !== null) {
+            setTier(data.tier);
+          }
+        });
+
+        // 클린업: Auth 리스너가 변경되면 Firestore 리스너도 해제
+        return () => unsubSnapshot();
       } else {
         setTier(null);
       }
@@ -146,17 +147,18 @@ const App: React.FC = () => {
                 !tier ? <Navigate to="/pricing" replace /> :
                   <Dashboard tier={tier} theme={consoleTheme} uid={user.uid} onThemeChange={setConsoleTheme} />
             } />
+            {/* Pricing: 로그인 필수 */}
             <Route path="/pricing" element={
-              <Pricing
-                isLoggedIn={!!user}
-                currentTier={tier}
-                uid={user?.uid}
-                userEmail={user?.email || undefined}
-                onTierChange={handleTierChange}
-              />
+              !user ? <Navigate to="/login" replace /> :
+                <Pricing
+                  isLoggedIn={true}
+                  currentTier={tier}
+                  uid={user.uid}
+                  userEmail={user.email || undefined}
+                  onTierChange={handleTierChange}
+                />
             } />
             <Route path="/support" element={<Support />} />
-            {/* Polar 결제 성공 콜백 */}
             <Route path="/checkout/success" element={
               <CheckoutSuccess user={user} onTierChange={handleTierChange} />
             } />
