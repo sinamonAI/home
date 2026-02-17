@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase.config';
 import { motion } from 'framer-motion';
-import { Terminal, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon } from 'lucide-react';
+import { LayoutDashboard, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon, Terminal } from 'lucide-react';
 import { SCRIPT_ID, BRAND_LOGO, BRAND_NAME } from '../constants';
 import { generateTradingCode } from '../services/geminiService';
 import { UserTier, deleteUserAccount } from '../services/userService';
@@ -133,7 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
 
   // 사이드바 메뉴 항목
   const menuItems = [
-    { id: 'console' as const, icon: <Terminal size={18} />, label: 'Console' },
+    { id: 'console' as const, icon: <LayoutDashboard size={18} />, label: 'Console' },
     { id: 'docs' as const, icon: <BookOpen size={18} />, label: 'Docs' },
     { id: 'account' as const, icon: <User size={18} />, label: '계정 정보' },
     { id: 'support' as const, icon: <HelpCircle size={18} />, label: 'Support' },
@@ -230,7 +230,7 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
         {/* 상단 바 */}
         <header className="h-14 border-b border-white/[0.06] bg-[#0D0D1A]/50 backdrop-blur-xl flex items-center justify-between px-6 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <Terminal className="text-indigo-400" size={18} />
+            <Cpu className="text-indigo-400" size={18} />
             <h1 className="text-sm font-bold tracking-tight uppercase mono">VIBE_CONSOLE</h1>
           </div>
           <div className="flex items-center gap-3">
