@@ -1,8 +1,8 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// 안전한 초기화 - 환경변수에서 API 키 로드
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+// 안전한 초기화 - 사용자 제공 AI Studio Key (우선 사용)
+const apiKey = 'AIzaSyCxoNoISc9pdfTRN52G0fCsq1oiB8b1IAM';
 let ai: any = null;
 
 if (apiKey) {
@@ -25,9 +25,9 @@ The 'SnapQuantLibrary' provides the following global functions:
 5. SnapQuant.notify(message) - sends notification to Slack/Telegram
 
 Rules:
-- Generate ONLY the JavaScript code block for Google Apps Script.
+- Provide a helpful response with a brief explanation of the strategy.
+- Always include the Google Apps Script code in a markdown code block (e.g., \`\`\`javascript ... \`\`\`).
 - The user script must have a function named 'runTradingStrategy()'.
-- Do not explain the code unless asked, just provide the valid JS code.
 - Ensure the code is robust and follows the library's pattern.
 `;
 
@@ -42,7 +42,7 @@ export const generateTradingCode = async (prompt: string, retryCount = 0): Promi
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -65,3 +65,11 @@ export const generateTradingCode = async (prompt: string, retryCount = 0): Promi
     return "// 오류: 코드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.";
   }
 };
+
+// AI 응답에서 코드 블록만 추출하는 헬퍼 함수
+export const extractGasCode = (response: string): string => {
+  const codeBlockRegex = /```(?:javascript|js)?\s*([\s\S]*?)```/;
+  const match = response.match(codeBlockRegex);
+  return match ? match[1].trim() : '';
+};
+

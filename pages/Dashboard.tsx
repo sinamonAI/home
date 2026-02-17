@@ -4,10 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../services/firebase.config';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon, Terminal } from 'lucide-react';
+
+import { LayoutDashboard, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon, Terminal, Share, FileCode, X, Library } from 'lucide-react';
 import { SCRIPT_ID, BRAND_LOGO, BRAND_NAME } from '../constants';
-import { generateTradingCode } from '../services/geminiService';
-import { UserTier, deleteUserAccount } from '../services/userService';
+import { generateTradingCode, extractGasCode } from '../services/geminiService';
+import { UserTier, deleteUserAccount, saveChatHistory } from '../services/userService';
 
 interface DashboardProps {
   tier: UserTier;
@@ -84,13 +85,20 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const [deleteInput, setDeleteInput] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   // AI 코드 생성
   const handleGenerate = async () => {
     if (!prompt) return;
     setIsGenerating(true);
-    const code = await generateTradingCode(prompt);
-    setGeneratedCode(code);
+    const response = await generateTradingCode(prompt);
+    setGeneratedCode(response);
+
+    // 이력 저장 (백그라운드)
+    if (auth.currentUser) {
+      saveChatHistory(auth.currentUser.uid, prompt, response);
+    }
+
     setIsGenerating(false);
   };
 
@@ -242,45 +250,46 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
 
         {/* 작업 영역 */}
         {activeMenu === 'console' && (
-          <div className="flex-1 overflow-y-auto p-6 md:p-8">
-            {/* 탭 전환 */}
-            <div className="flex gap-3 mb-6">
-              <button
-                onClick={() => setActiveTab('ai')}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'ai'
-                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                  : 'text-gray-600 bg-transparent border-white/[0.04] hover:text-gray-400 hover:bg-white/[0.03]'
-                  }`}
-              >
-                <span className="flex items-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('templates')}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'templates'
-                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                  : 'text-gray-600 bg-transparent border-white/[0.04] hover:text-gray-400 hover:bg-white/[0.03]'
-                  }`}
-              >
-                <span className="flex items-center gap-2"><TrendingUp size={14} /> 검증된 전략</span>
-              </button>
-            </div>
+          <div className="flex flex-1 overflow-hidden relative">
+            {/* 좌측 패널 (입력 & 템플릿) */}
+            <div className={`flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar transition-all ${sidebarOpen ? '' : ''}`}>
+              {/* 탭 전환 */}
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setActiveTab('ai')}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'ai'
+                    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                    : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                    }`}
+                >
+                  <span className="flex items-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'templates'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                    }`}
+                >
+                  <span className="flex items-center gap-2"><TrendingUp size={14} /> 검증된 전략</span>
+                </button>
+              </div>
 
-            <div className="grid lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                {activeTab === 'ai' ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl"
-                  >
-                    <h3 className="text-base font-bold mb-4 flex items-center gap-3 tracking-tight">
+              {activeTab === 'ai' ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-6"
+                >
+                  <div className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl">
+                    <h3 className="text-base font-bold mb-4 flex items-center gap-3 tracking-tight text-white">
                       <Cpu className="text-indigo-400" size={18} /> AI VIBE CODER
                     </h3>
                     <textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
-                      className="w-full h-36 border border-white/[0.08] rounded-xl p-5 bg-black/40 text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all mb-4 font-mono text-sm leading-relaxed"
-                      placeholder="전략을 자연어로 입력하세요. (예: RSI가 30 이하일 때 TQQQ 5주 매수...)"
+                      className="w-full h-48 border border-white/[0.08] rounded-xl p-5 bg-black/40 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all mb-4 font-mono text-sm leading-relaxed"
+                      placeholder="전략을 자연어로 입력하세요.&#13;&#10;(예: RSI가 30 이하일 때 TQQQ 5주 매수, 70 이상일 때 매도...)"
                     />
                     <button
                       onClick={handleGenerate}
@@ -288,79 +297,168 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                       className="w-full py-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-[0.15em] text-xs shadow-lg shadow-indigo-500/20"
                     >
                       {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Code size={16} />}
-                      Generate Code
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
-                    <h3 className="text-base font-bold flex items-center gap-3 tracking-tight mb-3">
-                      <TrendingUp className="text-blue-400" size={18} /> 검증된 전략 선택
-                    </h3>
-                    {STRATEGY_TEMPLATES.map((t) => (
-                      <button key={t.id} onClick={() => selectTemplate(t)} className="w-full p-4 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:bg-white/5 transition-all text-left group flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: t.color + '20', color: t.color }}>
-                          <Play size={16} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-xs font-bold tracking-tight" style={{ color: t.color }}>{t.name}</div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">{t.desc}</div>
-                        </div>
-                        <Code size={14} className="text-gray-600 group-hover:text-white transition-colors" />
-                      </button>
-                    ))}
-                    <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 mt-3">
-                      <AlertTriangle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[9px] text-amber-500/70 leading-relaxed">
-                        모든 알고리즘의 선택과 활용은 사용자 본인의 판단이며, SnapQuant와 무관합니다.
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Bridge ID */}
-                <div className="p-6 border border-white/[0.06] rounded-2xl bg-[#0D0D1A]">
-                  <h3 className="text-sm font-bold mb-4 flex items-center gap-3 tracking-tight">
-                    <ExternalLink className="text-blue-400" size={16} /> BRIDGE_ID
-                  </h3>
-                  <div className="p-4 rounded-lg border border-dashed border-blue-500/20 bg-black/40 flex items-center justify-between gap-2 mb-3">
-                    <code className="mono text-xs text-blue-400 break-all">{SCRIPT_ID}</code>
-                    <button onClick={() => copyToClipboard(SCRIPT_ID)} className="p-2.5 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all flex-shrink-0">
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
+                      GENERATE CODE
                     </button>
                   </div>
-                  <p className="text-[9px] text-gray-500 leading-relaxed uppercase tracking-widest font-bold mono">
-                    이 ID를 Google Apps Script 라이브러리에 추가하세요.
-                  </p>
+                </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
+                  <h3 className="text-base font-bold flex items-center gap-3 tracking-tight mb-4 text-white">
+                    <TrendingUp className="text-blue-400" size={18} /> 검증된 전략 선택
+                  </h3>
+                  {STRATEGY_TEMPLATES.map((t) => (
+                    <button key={t.id} onClick={() => selectTemplate(t)} className="w-full p-4 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:bg-white/5 transition-all text-left group flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: t.color + '20', color: t.color }}>
+                        <Play size={18} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold tracking-tight text-gray-200" style={{ color: t.color }}>{t.name}</div>
+                        <div className="text-xs text-gray-500 mt-1 truncate">{t.desc}</div>
+                      </div>
+                      <Code size={16} className="text-gray-700 group-hover:text-white transition-colors" />
+                    </button>
+                  ))}
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mt-4">
+                    <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-amber-500/80 leading-relaxed font-medium">
+                      제공되는 전략 템플릿은 예시이며, 실제 수익을 보장하지 않습니다. 모든 투자의 책임은 사용자에게 있습니다.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* 우측 패널 (AI 응답 & 출판) */}
+            <div className="w-[45%] border-l border-white/[0.06] bg-[#0A0A0F] flex flex-col">
+              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between bg-[#0D0D1A]/50">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mono">AI_RESPONSE</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIsPublishModalOpen(true)}
+                    disabled={!generatedCode}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-500/20 transition-all border border-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Share size={12} /> Publish
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(generatedCode)}
+                    disabled={!generatedCode}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.05] text-gray-400 text-[10px] font-bold uppercase tracking-widest hover:bg-white/[0.1] transition-all border border-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
                 </div>
               </div>
 
-              {/* 코드 출력 패널 */}
-              <div className="flex flex-col min-h-[450px]">
-                <div className="border border-white/[0.06] rounded-2xl flex flex-col h-full overflow-hidden bg-[#0D0D1A]">
-                  <div className="p-4 border-b border-white/[0.06] bg-black/40 flex items-center justify-between">
-                    <span className="text-[9px] font-bold uppercase mono tracking-widest text-gray-500">GENERATED_CODE.gs</span>
-                    <button
-                      onClick={() => copyToClipboard(generatedCode)}
-                      disabled={!generatedCode}
-                      className="px-3 py-1.5 text-[9px] font-bold text-indigo-400 flex items-center gap-2 border border-indigo-500/20 rounded-lg hover:bg-indigo-500/10 transition-all uppercase tracking-widest disabled:opacity-30"
-                    >
-                      {copied ? <Check size={12} /> : <Copy size={12} />} Copy
-                    </button>
+              <div className="flex-1 p-0 overflow-hidden relative bg-[#0D0D1A]">
+                {generatedCode ? (
+                  <pre className="w-full h-full p-6 font-mono text-xs text-indigo-100 leading-relaxed whitespace-pre-wrap overflow-y-auto custom-scrollbar focus:outline-none">
+                    {generatedCode}
+                  </pre>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-50">
+                    <Terminal size={40} strokeWidth={1} />
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] font-mono mb-2">Awaiting Output</p>
+                      <p className="text-[10px] text-gray-600">AI Vibe Coder가 생성한 코드가 여기에 표시됩니다</p>
+                    </div>
                   </div>
-                  <div className="flex-1 p-6 font-mono text-xs overflow-auto bg-black/60">
-                    {generatedCode ? (
-                      <pre className="leading-relaxed whitespace-pre-wrap text-indigo-300">{generatedCode}</pre>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center">
-                        <Terminal size={40} className="text-gray-800 mb-3" />
-                        <p className="mono uppercase tracking-[0.3em] text-[9px] text-gray-700">Awaiting Instructions...</p>
-                        <p className="mono text-[9px] mt-1.5 text-gray-800">AI로 생성하거나 검증된 전략을 선택하세요</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
+
+            {/* 출판(Publish) 모달 */}
+            {isPublishModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full max-w-2xl bg-[#0D0D1A] rounded-2xl border border-white/[0.1] shadow-2xl shadow-indigo-500/10 overflow-hidden"
+                >
+                  <div className="p-5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                        <Share size={18} className="text-indigo-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Deploy to Google Apps Script</h3>
+                        <p className="text-[10px] text-gray-500 mt-0.5">생성된 코드를 사용자의 GAS 프로젝트에 적용하세요</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsPublishModalOpen(false)}
+                      className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* 1. GAS 소스 코드 */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <FileCode size={14} className="text-indigo-400" /> 1. GAS Source Code
+                        </label>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(extractGasCode(generatedCode) || generatedCode);
+                            alert('코드가 복사되었습니다.');
+                          }}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                        >
+                          <Copy size={10} /> Copy Code
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-indigo-500/5 rounded-xl pointer-events-none" />
+                        <pre className="h-40 p-4 rounded-xl border border-white/[0.06] bg-black/50 text-[10px] text-gray-300 font-mono overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                          {extractGasCode(generatedCode) || '// 코드를 찾을 수 없습니다. AI 응답을 확인해주세요.'}
+                        </pre>
+                      </div>
+                      <p className="mt-2 text-[10px] text-gray-600">
+                        * 위 코드를 복사하여 Google Apps Script 프로젝트(`코드.gs`)에 붙여넣으세요.
+                      </p>
+                    </div>
+
+                    {/* 2. 라이브러리 ID */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <Library size={14} className="text-emerald-400" /> 2. Bridge Library ID
+                        </label>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(SCRIPT_ID);
+                            alert('라이브러리 ID가 복사되었습니다.');
+                          }}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                        >
+                          <Copy size={10} /> Copy ID
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-black/50">
+                        <code className="flex-1 text-[11px] font-mono text-emerald-400 truncate">{SCRIPT_ID}</code>
+                      </div>
+                      <p className="mt-2 text-[10px] text-gray-600">
+                        * GAS 프로젝트 설정 `{'>'}` 라이브러리 추가에서 위 ID를 입력하고 <b>SnapQuantLibrary</b>를 추가하세요.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 border-t border-white/[0.06] bg-white/[0.01] flex justify-end">
+                    <button
+                      onClick={() => setIsPublishModalOpen(false)}
+                      className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
           </div>
         )}
 

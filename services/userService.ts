@@ -116,3 +116,21 @@ export async function deleteUserAccount(user: User, retryCount = 0): Promise<{ s
         };
     }
 }
+
+// AI 대화 이력 저장 (성능 향상 데이터용)
+import { collection, addDoc } from 'firebase/firestore';
+
+export async function saveChatHistory(uid: string, prompt: string, response: string): Promise<void> {
+    try {
+        await addDoc(collection(db, 'users', uid, 'ai_history'), {
+            prompt,
+            response,
+            timestamp: new Date().toISOString(),
+            model: 'gemini-2.0-flash'
+        });
+    } catch (e) {
+        console.error('이력 저장 실패:', e); // 사용자에겐 조용히 실패
+    }
+}
+
+
