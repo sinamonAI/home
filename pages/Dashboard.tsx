@@ -7,8 +7,16 @@ import { motion } from 'framer-motion';
 
 import { LayoutDashboard, Code, BookOpen, Copy, Check, Cpu, Play, AlertTriangle, TrendingUp, User, LogOut, HelpCircle, ChevronLeft, ChevronRight, Zap, ArrowUpRight, ExternalLink, Trash2, AlertOctagon, Terminal, Share, FileCode, X, Library } from 'lucide-react';
 import { SCRIPT_ID, BRAND_LOGO, BRAND_NAME } from '../constants';
-import { generateTradingCode, extractGasCode } from '../services/geminiService';
+import { generateTradingCode, extractGasCode } from '../services/openaiService';
 import { UserTier, deleteUserAccount, saveChatHistory } from '../services/userService';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  code?: string;
+}
 
 interface DashboardProps {
   tier: UserTier;
@@ -75,9 +83,18 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const navigate = useNavigate();
   const isPro = tier === 'pro';
   const [prompt, setPrompt] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
   const [activeTab, setActiveTab] = useState<'ai' | 'templates'>('ai');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState<'console' | 'docs' | 'account' | 'support'>('console');
@@ -88,18 +105,48 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   // AI 코드 생성
+  // AI 코드 생성
   const handleGenerate = async () => {
-    if (!prompt) return;
+    if (!prompt.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: prompt,
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setPrompt('');
     setIsGenerating(true);
-    const response = await generateTradingCode(prompt);
-    setGeneratedCode(response);
 
-    // 이력 저장 (백그라운드)
-    if (auth.currentUser) {
-      saveChatHistory(auth.currentUser.uid, prompt, response);
+    try {
+      const response = await generateTradingCode(userMessage.content);
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response,
+        timestamp: Date.now(),
+        code: extractGasCode(response) || undefined
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
+      // 이력 저장 (백그라운드)
+      if (auth.currentUser) {
+        saveChatHistory(auth.currentUser.uid, userMessage.content, response);
+      }
+    } catch (error) {
+      console.error(error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "// 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsGenerating(false);
     }
-
-    setIsGenerating(false);
   };
 
   // 클립보드 복사
@@ -111,7 +158,15 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
 
   // 템플릿 선택
   const selectTemplate = (template: typeof STRATEGY_TEMPLATES[0]) => {
-    setGeneratedCode(template.code);
+    const templateMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `[템플릿 선택: ${template.name}]\n\n${template.code}`,
+      timestamp: Date.now(),
+      code: template.code
+    };
+    setMessages(prev => [...prev, templateMessage]);
+    setActiveTab('ai'); // AI 탭으로 자동 이동
   };
 
   // 로그아웃
@@ -250,120 +305,139 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
 
         {/* 작업 영역 */}
         {activeMenu === 'console' && (
-          <div className="flex flex-1 overflow-hidden relative">
-            {/* 좌측 패널 (입력 & 템플릿) */}
-            <div className={`flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar transition-all ${sidebarOpen ? '' : ''}`}>
-              {/* 탭 전환 */}
-              <div className="flex gap-3 mb-6">
-                <button
-                  onClick={() => setActiveTab('ai')}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'ai'
-                    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                    : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
-                    }`}
-                >
-                  <span className="flex items-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('templates')}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'templates'
-                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                    : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
-                    }`}
-                >
-                  <span className="flex items-center gap-2"><TrendingUp size={14} /> 검증된 전략</span>
-                </button>
-              </div>
+          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
+            {/* 좌측 패널 (입력 & 템플릿) - 모바일: 상단, 데스크탑: 좌측 */}
+            <div className={`w-full lg:w-[45%] flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-white/[0.06] bg-[#0D0D1A] overflow-hidden`}>
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+                {/* 탭 전환 */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setActiveTab('ai')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'ai'
+                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                      : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                      }`}
+                  >
+                    <span className="flex items-center justify-center gap-2"><Cpu size={14} /> AI Vibe Coder</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('templates')}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${activeTab === 'templates'
+                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      : 'text-gray-500 border-white/[0.06] hover:bg-white/5'
+                      }`}
+                  >
+                    <span className="flex items-center justify-center gap-2"><TrendingUp size={14} /> Templates</span>
+                  </button>
+                </div>
 
-              {activeTab === 'ai' ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="space-y-6"
-                >
-                  <div className="p-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl">
-                    <h3 className="text-base font-bold mb-4 flex items-center gap-3 tracking-tight text-white">
-                      <Cpu className="text-indigo-400" size={18} /> AI VIBE CODER
-                    </h3>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      className="w-full h-48 border border-white/[0.08] rounded-xl p-5 bg-black/40 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all mb-4 font-mono text-sm leading-relaxed"
-                      placeholder="전략을 자연어로 입력하세요.&#13;&#10;(예: RSI가 30 이하일 때 TQQQ 5주 매수, 70 이상일 때 매도...)"
-                    />
-                    <button
-                      onClick={handleGenerate}
-                      disabled={isGenerating || !prompt}
-                      className="w-full py-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-[0.15em] text-xs shadow-lg shadow-indigo-500/20"
-                    >
-                      {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Code size={16} />}
-                      GENERATE CODE
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
-                  <h3 className="text-base font-bold flex items-center gap-3 tracking-tight mb-4 text-white">
-                    <TrendingUp className="text-blue-400" size={18} /> 검증된 전략 선택
-                  </h3>
-                  {STRATEGY_TEMPLATES.map((t) => (
-                    <button key={t.id} onClick={() => selectTemplate(t)} className="w-full p-4 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:bg-white/5 transition-all text-left group flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: t.color + '20', color: t.color }}>
-                        <Play size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold tracking-tight text-gray-200" style={{ color: t.color }}>{t.name}</div>
-                        <div className="text-xs text-gray-500 mt-1 truncate">{t.desc}</div>
-                      </div>
-                      <Code size={16} className="text-gray-700 group-hover:text-white transition-colors" />
-                    </button>
-                  ))}
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 mt-4">
-                    <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-amber-500/80 leading-relaxed font-medium">
-                      제공되는 전략 템플릿은 예시이며, 실제 수익을 보장하지 않습니다. 모든 투자의 책임은 사용자에게 있습니다.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+                {activeTab === 'ai' ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-4"
+                  >
+                    <div className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl">
+                      <h3 className="text-sm font-bold mb-3 flex items-center gap-2 tracking-tight text-white">
+                        <Cpu className="text-indigo-400" size={16} /> INPUT STRATEGY
+                      </h3>
+                      <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            if (e.nativeEvent.isComposing) return;
+                            e.preventDefault();
+                            handleGenerate();
+                          }
+                        }}
+                        className="w-full h-32 md:h-40 border border-white/[0.08] rounded-xl p-4 bg-black/40 text-white placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all mb-3 font-mono text-xs leading-relaxed custom-scrollbar resize-none"
+                        placeholder="Enter your strategy...(e.g. Buy TQQQ when RSI < 30)"
+                      />
+                      <button
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !prompt}
+                        className="w-full py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-[0.15em] text-[10px] shadow-lg shadow-indigo-500/20"
+                      >
+                        {isGenerating ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Code size={14} />}
+                        GENERATE
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
+                    {STRATEGY_TEMPLATES.map((t) => (
+                      <button key={t.id} onClick={() => selectTemplate(t)} className="w-full p-3 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:bg-white/5 transition-all text-left group flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: t.color + '20', color: t.color }}>
+                          <Play size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold tracking-tight text-gray-200" style={{ color: t.color }}>{t.name}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5 truncate">{t.desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
             </div>
 
-            {/* 우측 패널 (AI 응답 & 출판) */}
-            <div className="w-[45%] border-l border-white/[0.06] bg-[#0A0A0F] flex flex-col">
-              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between bg-[#0D0D1A]/50">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mono">AI_RESPONSE</span>
+            {/* 우측 패널 (Chat & Output) - 모바일: 하단, 데스크탑: 우측 */}
+            <div className="flex-1 bg-[#0A0A0F] flex flex-col h-[50vh] lg:h-auto border-t lg:border-t-0 p-0 relative">
+              <div className="h-12 border-b border-white/[0.06] flex items-center justify-between px-4 bg-[#0D0D1A]/50 flex-shrink-0">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mono">Live Console</span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsPublishModalOpen(true)}
-                    disabled={!generatedCode}
+                    // 가장 최근의 AI 메시지를 찾아서 코드가 있는지 확인
+                    disabled={!messages.filter(m => m.role === 'assistant' && m.code).length}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-500/20 transition-all border border-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Share size={12} /> Publish
                   </button>
-                  <button
-                    onClick={() => copyToClipboard(generatedCode)}
-                    disabled={!generatedCode}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.05] text-gray-400 text-[10px] font-bold uppercase tracking-widest hover:bg-white/[0.1] transition-all border border-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                    {copied ? 'Copied' : 'Copy'}
-                  </button>
                 </div>
               </div>
 
-              <div className="flex-1 p-0 overflow-hidden relative bg-[#0D0D1A]">
-                {generatedCode ? (
-                  <pre className="w-full h-full p-6 font-mono text-xs text-indigo-100 leading-relaxed whitespace-pre-wrap overflow-y-auto custom-scrollbar focus:outline-none">
-                    {generatedCode}
-                  </pre>
-                ) : (
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 bg-[#0D0D1A]">
+                {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-50">
-                    <Terminal size={40} strokeWidth={1} />
+                    <Terminal size={32} strokeWidth={1} />
                     <div className="text-center">
-                      <p className="text-xs uppercase tracking-[0.2em] font-mono mb-2">Awaiting Output</p>
-                      <p className="text-[10px] text-gray-600">AI Vibe Coder가 생성한 코드가 여기에 표시됩니다</p>
+                      <p className="text-xs uppercase tracking-[0.2em] font-mono mb-2">Ready</p>
+                      <p className="text-[10px] text-gray-600">Enter a strategy to start coding</p>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    {messages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] lg:max-w-[80%] rounded-2xl p-4 ${msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-br-none'
+                          : 'bg-white/[0.05] border border-white/[0.06] text-gray-300 rounded-bl-none'
+                          }`}>
+                          <div className="text-[10px] opacity-50 mb-1 font-mono uppercase">
+                            {msg.role === 'user' ? 'You' : 'AI Vibe Coder'}
+                          </div>
+                          <div className="text-xs leading-relaxed whitespace-pre-wrap font-mono">
+                            {msg.content}
+                          </div>
+                          {msg.code && (
+                            <div className="mt-3 pt-3 border-t border-white/[0.1]">
+                              <div className="flex justify-end gap-2 text-[10px]">
+                                <button
+                                  onClick={() => copyToClipboard(msg.code!)}
+                                  className="flex items-center gap-1 text-gray-400 hover:text-white"
+                                >
+                                  <Copy size={10} /> Copy Code
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </>
                 )}
               </div>
             </div>
@@ -371,11 +445,13 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
             {/* 출판(Publish) 모달 */}
             {isPublishModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+                {/* ... Modal Content Same as before, just need to get the latest code ... */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="w-full max-w-2xl bg-[#0D0D1A] rounded-2xl border border-white/[0.1] shadow-2xl shadow-indigo-500/10 overflow-hidden"
                 >
+                  {/* ... (생략) ... Modal Header code ... */}
                   <div className="p-5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
@@ -383,77 +459,65 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Deploy to Google Apps Script</h3>
-                        <p className="text-[10px] text-gray-500 mt-0.5">생성된 코드를 사용자의 GAS 프로젝트에 적용하세요</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setIsPublishModalOpen(false)}
-                      className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-all"
-                    >
-                      <X size={18} />
-                    </button>
+                    <button onClick={() => setIsPublishModalOpen(false)} className="p-2 rounded-lg text-gray-500 hover:text-white"><X size={18} /></button>
                   </div>
 
-                  <div className="p-6 space-y-6">
-                    {/* 1. GAS 소스 코드 */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                          <FileCode size={14} className="text-indigo-400" /> 1. GAS Source Code
-                        </label>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(extractGasCode(generatedCode) || generatedCode);
-                            alert('코드가 복사되었습니다.');
-                          }}
-                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-widest flex items-center gap-1"
-                        >
-                          <Copy size={10} /> Copy Code
-                        </button>
-                      </div>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-indigo-500/5 rounded-xl pointer-events-none" />
-                        <pre className="h-40 p-4 rounded-xl border border-white/[0.06] bg-black/50 text-[10px] text-gray-300 font-mono overflow-y-auto custom-scrollbar whitespace-pre-wrap">
-                          {extractGasCode(generatedCode) || '// 코드를 찾을 수 없습니다. AI 응답을 확인해주세요.'}
-                        </pre>
-                      </div>
-                      <p className="mt-2 text-[10px] text-gray-600">
-                        * 위 코드를 복사하여 Google Apps Script 프로젝트(`코드.gs`)에 붙여넣으세요.
-                      </p>
-                    </div>
+                  {/* Extract latest code for modal */}
+                  {(() => {
+                    const lastAiMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.code);
+                    const codeToShow = lastAiMsg ? lastAiMsg.code : "// No code generated yet";
 
-                    {/* 2. 라이브러리 ID */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                          <Library size={14} className="text-emerald-400" /> 2. Bridge Library ID
-                        </label>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(SCRIPT_ID);
-                            alert('라이브러리 ID가 복사되었습니다.');
-                          }}
-                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest flex items-center gap-1"
-                        >
-                          <Copy size={10} /> Copy ID
-                        </button>
+                    return (
+                      <div className="p-6 space-y-6">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                              <FileCode size={14} className="text-indigo-400" /> 1. GAS Source Code
+                            </label>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(codeToShow || "");
+                                alert('코드가 복사되었습니다.');
+                              }}
+                              className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                            >
+                              <Copy size={10} /> Copy Code
+                            </button>
+                          </div>
+                          <div className="relative group">
+                            <pre className="h-40 p-4 rounded-xl border border-white/[0.06] bg-black/50 text-[10px] text-gray-300 font-mono overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                              {codeToShow}
+                            </pre>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                              <Library size={14} className="text-emerald-400" /> 2. Bridge Library ID
+                            </label>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(SCRIPT_ID);
+                                alert('라이브러리 ID가 복사되었습니다.');
+                              }}
+                              className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                            >
+                              <Copy size={10} /> Copy ID
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-black/50">
+                            <code className="flex-1 text-[11px] font-mono text-emerald-400 truncate">{SCRIPT_ID}</code>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-black/50">
-                        <code className="flex-1 text-[11px] font-mono text-emerald-400 truncate">{SCRIPT_ID}</code>
-                      </div>
-                      <p className="mt-2 text-[10px] text-gray-600">
-                        * GAS 프로젝트 설정 `{'>'}` 라이브러리 추가에서 위 ID를 입력하고 <b>SnapQuantLibrary</b>를 추가하세요.
-                      </p>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   <div className="p-5 border-t border-white/[0.06] bg-white/[0.01] flex justify-end">
-                    <button
-                      onClick={() => setIsPublishModalOpen(false)}
-                      className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
-                    >
-                      Done
-                    </button>
+                    <button onClick={() => setIsPublishModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-gray-200">Done</button>
                   </div>
                 </motion.div>
               </div>
