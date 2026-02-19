@@ -1,5 +1,6 @@
 
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+// API Key via Proxy
+
 const MODEL_NAME = 'gpt-5-mini'; // 최신 미니 모델 사용
 
 const SYSTEM_INSTRUCTION = `You are a conversational stock buying strategy assistant.
@@ -126,44 +127,39 @@ function updateOhlcData(ticker, data) { return api('updateOhlcData', ticker, dat
 function getRegisteredUsers() { return api('getRegisteredUsers'); }
 `;
 
+
 export const generateTradingCode = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[], retryCount = 0): Promise<string> => {
   const MAX_RETRIES = 3;
+  const PROXY_URL = import.meta.env.VITE_OPENAI_PROXY_URL;
 
-  if (!API_KEY) {
-    return "// 오류: OpenAI API Key가 설정되지 않았습니다. .env.local 파일을 확인해주세요.";
+  if (!PROXY_URL) {
+    return "// 오류: OpenAI Proxy URL이 설정되지 않았습니다. .env 파일을 확인해주세요.";
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Content-Type': 'text/plain;charset=utf-8', // GAS doPost 특성상 text/plain 권장 (CORS 이슈 방지)
       },
       body: JSON.stringify({
         model: MODEL_NAME,
         messages: [
           { role: 'system', content: SYSTEM_INSTRUCTION },
           ...messages
-        ],
-        temperature: 1
+        ]
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('OpenAI API Error:', response.status, errorData);
-
-      if (response.status === 429) {
-        throw new Error("너무 많은 요청입니다. 잠시 후 다시 시도해주세요. (Rate Limit)");
-      }
-      if (response.status === 401) {
-        throw new Error("API 인증 실패. 키를 확인해주세요.");
-      }
-      throw new Error(`API 오류 (${response.status}): ${errorData.error?.message || response.statusText}`);
+      throw new Error(`Proxy network error: ${response.status}`);
     }
 
     const data = await response.json();
+
+    if (data.error) {
+      throw new Error(`Proxy API Error: ${data.error.message}`);
+    }
 
     if (!data.choices || data.choices.length === 0) {
       throw new Error("AI가 응답을 생성하지 못했습니다.");
@@ -184,6 +180,7 @@ export const generateTradingCode = async (messages: { role: 'user' | 'assistant'
     return `// 오류: ${error.message}`;
   }
 };
+
 
 // AI 응답에서 코드 블록만 추출하는 헬퍼 함수
 export const extractGasCode = (response: string): string => {
