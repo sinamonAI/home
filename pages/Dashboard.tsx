@@ -103,9 +103,14 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [resultCode, setResultCode] = useState('');
 
-  // AI 코드 생성
-  // AI 코드 생성
+  // Script Constants
+  const BRIDGE_SCRIPT_ID = "1fNABlXwwYzaFJFrJ2o88tYONMn5-MpYNFMCQL3OcemXXmQjpSBj3IsMC";
+  const BRIDGE_IDENTIFIER = "TradingEngine";
+
+  // ... (existing handleGenerate)
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
@@ -116,20 +121,36 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
       timestamp: Date.now()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    // UI 즉시 업데이트를 위해 이전 메시지들과 새 메시지 합침
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setPrompt('');
     setIsGenerating(true);
 
     try {
-      const response = await generateTradingCode(userMessage.content);
+      // API 호출 시 전체 대화 히스토리 전달
+      const apiMessages = newMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      const response = await generateTradingCode(apiMessages);
+      const extractedCode = extractGasCode(response);
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response,
         timestamp: Date.now(),
-        code: extractGasCode(response) || undefined
+        code: extractedCode || undefined
       };
       setMessages(prev => [...prev, aiMessage]);
+
+      // 코드가 생성되었고, TradingEngine 브릿지 코드가 포함되어 있다면 결과 모달 표시
+      if (extractedCode && response.includes('TradingEngine')) {
+        setResultCode(extractedCode);
+        setIsResultModalOpen(true);
+      }
 
       // 이력 저장 (백그라운드)
       if (auth.currentUser) {
@@ -442,16 +463,109 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
               </div>
             </div>
 
-            {/* 출판(Publish) 모달 */}
-            {isPublishModalOpen && (
+            {/* Result Modal (New) */}
+            {isResultModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
-                {/* ... Modal Content Same as before, just need to get the latest code ... */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="w-full max-w-2xl bg-[#0D0D1A] rounded-2xl border border-white/[0.1] shadow-2xl shadow-indigo-500/10 overflow-hidden"
                 >
-                  {/* ... (생략) ... Modal Header code ... */}
+                  <div className="p-5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <Check size={18} className="text-emerald-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Strategy Generated</h3>
+                      </div>
+                    </div>
+                    <button onClick={() => setIsResultModalOpen(false)} className="p-2 rounded-lg text-gray-500 hover:text-white"><X size={18} /></button>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {/* 1. Script ID */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <Library size={14} className="text-indigo-400" /> 1. Library Script ID
+                        </label>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(BRIDGE_SCRIPT_ID);
+                            alert('스크립트 ID가 복사되었습니다.');
+                          }}
+                          className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                        >
+                          <Copy size={10} /> Copy ID
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-black/50">
+                        <code className="flex-1 text-[11px] font-mono text-indigo-400 truncate">{BRIDGE_SCRIPT_ID}</code>
+                      </div>
+                    </div>
+
+                    {/* 2. Identifier */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <User size={14} className="text-amber-400" /> 2. Library Identifier
+                        </label>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(BRIDGE_IDENTIFIER);
+                            alert('식별자가 복사되었습니다.');
+                          }}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                        >
+                          <Copy size={10} /> Copy Name
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-black/50">
+                        <code className="flex-1 text-[11px] font-mono text-amber-400 truncate">{BRIDGE_IDENTIFIER}</code>
+                      </div>
+                    </div>
+
+                    {/* 3. Code */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                          <FileCode size={14} className="text-emerald-400" /> 3. Generated Code
+                        </label>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(resultCode);
+                            alert('코드가 복사되었습니다.');
+                          }}
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-widest flex items-center gap-1"
+                        >
+                          <Copy size={10} /> Copy Code
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <pre className="h-40 p-4 rounded-xl border border-white/[0.06] bg-black/50 text-[10px] text-gray-300 font-mono overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                          {resultCode}
+                        </pre>
+                      </div>
+                      <p className="mt-2 text-[10px] text-gray-500">* 위 코드를 Google Apps Script 프로젝트에 붙여넣고 저장하세요.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 border-t border-white/[0.06] bg-white/[0.01] flex justify-end">
+                    <button onClick={() => setIsResultModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-white text-black text-xs font-bold uppercase tracking-widest hover:bg-gray-200">Done</button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* 출판(Publish) 모달 */}
+            {isPublishModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full max-w-2xl bg-[#0D0D1A] rounded-2xl border border-white/[0.1] shadow-2xl shadow-indigo-500/10 overflow-hidden"
+                >
                   <div className="p-5 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
@@ -464,7 +578,6 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                     <button onClick={() => setIsPublishModalOpen(false)} className="p-2 rounded-lg text-gray-500 hover:text-white"><X size={18} /></button>
                   </div>
 
-                  {/* Extract latest code for modal */}
                   {(() => {
                     const lastAiMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.code);
                     const codeToShow = lastAiMsg ? lastAiMsg.code : "// No code generated yet";
@@ -522,7 +635,6 @@ const Dashboard: React.FC<DashboardProps> = ({ tier, uid, userName, userPhoto, u
                 </motion.div>
               </div>
             )}
-
           </div>
         )}
 
