@@ -130,7 +130,7 @@ function getRegisteredUsers() { return api('getRegisteredUsers'); }
 
 export const generateTradingCode = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[], retryCount = 0): Promise<string> => {
   const MAX_RETRIES = 3;
-  let PROXY_URL = import.meta.env.VITE_OPENAI_PROXY_URL;
+  let PROXY_URL = import.meta.env.VITE_OPENAI_PROXY_URL || 'https://script.google.com/macros/s/AKfycbzgLcAXVmz9U9RYKeOqxNIpqTlPltHj7kBKl5762LnJ19I8sF4sXxldwDINi-QP5ifAmw/exec';
   let API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
   // 실제 웹 (GAS 환경)에서 실행 중인 경우 GAS 백엔드에서 API 키를 가져옵니다.
