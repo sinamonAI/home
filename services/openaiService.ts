@@ -1,5 +1,5 @@
-
 // API Key via Proxy
+declare const google: any;
 
 const MODEL_NAME = 'gpt-5-mini'; // 최신 미니 모델 사용
 
@@ -130,35 +130,82 @@ function getRegisteredUsers() { return api('getRegisteredUsers'); }
 
 export const generateTradingCode = async (messages: { role: 'user' | 'assistant' | 'system'; content: string }[], retryCount = 0): Promise<string> => {
   const MAX_RETRIES = 3;
-  const PROXY_URL = import.meta.env.VITE_OPENAI_PROXY_URL;
+  let PROXY_URL = import.meta.env.VITE_OPENAI_PROXY_URL;
+  let API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
-  if (!PROXY_URL) {
-    return "// 오류: OpenAI Proxy URL이 설정되지 않았습니다. .env 파일을 확인해주세요.";
+  // 실제 웹 (GAS 환경)에서 실행 중인 경우 GAS 백엔드에서 API 키를 가져옵니다.
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    try {
+      const gasApiKey = await new Promise<string>((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler((err: any) => reject(new Error(err.message || String(err))))
+          // 백엔드(Code.gs)에 getOpenAIApiKey 함수가 구현되어 있어야 합니다.
+          .getOpenAIApiKey();
+      });
+      if (gasApiKey) {
+        API_KEY = gasApiKey;
+        // GAS에서 키를 직접 받아왔다면 병목/CORS가 있는 프록시 대신 다이렉트 호출을 우선시합니다.
+        PROXY_URL = '';
+      }
+    } catch (e) {
+      console.warn("GAS에서 API 키를 가져오는 데 실패했습니다:", e);
+    }
+  }
+
+  if (!PROXY_URL && !API_KEY) {
+    return "// 오류: OpenAI Proxy URL 또는 API Key가 설정되지 않았습니다. .env 파일이나 GAS 스크립트 속성을 확인해주세요.";
   }
 
   try {
-    const response = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8', // GAS doPost 특성상 text/plain 권장 (CORS 이슈 방지)
-      },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        messages: [
-          { role: 'system', content: SYSTEM_INSTRUCTION },
-          ...messages
-        ]
-      })
-    });
+    let response;
+
+    if (PROXY_URL) {
+      // 프록시를 통한 호출 (CORS 우회 및 API 키 보호 목적)
+      response = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8', // GAS doPost 특성상 text/plain 권장 (CORS 이슈 방지)
+        },
+        body: JSON.stringify({
+          model: MODEL_NAME,
+          messages: [
+            { role: 'system', content: SYSTEM_INSTRUCTION },
+            ...messages
+          ]
+        })
+      });
+    } else {
+      // 직접 호출 (로컬 테스트용) - 주의: 브라우저 환경에서는 CORS 에러가 발생할 수 있습니다.
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          model: MODEL_NAME,
+          messages: [
+            { role: 'system', content: SYSTEM_INSTRUCTION },
+            ...messages
+          ]
+        })
+      });
+    }
 
     if (!response.ok) {
-      throw new Error(`Proxy network error: ${response.status}`);
+      if (!PROXY_URL) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(`OpenAI API Error: ${errData.error?.message || response.status} ${response.statusText}`);
+      } else {
+        throw new Error(`Proxy network error: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(`Proxy API Error: ${data.error.message}`);
+      throw new Error(`API Error: ${data.error.message || JSON.stringify(data.error)}`);
     }
 
     if (!data.choices || data.choices.length === 0) {
